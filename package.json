@@ -6,6 +6,7 @@
     "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
     "install:all": "npm install && npm install --prefix server && npm install --prefix client",
     "build": "npm run build --prefix client",
+    "typecheck": "npm run typecheck --prefix server && npm run build --prefix client",
     "test": "npm run test --prefix client && npm run test --prefix server"
   },
   "devDependencies": {

@@ -25,13 +25,16 @@ npm run install:all
 
 ### Setting up `.env`
 
-Because the website uses TMDB, you must have an API Key for API Read Access Token for TMDB.
-The `.env` should located in the project root, and may look like this once completed:
+Because the website uses TMDB, you need a TMDB API key.
+Copy `.env.example` to `.env` in the project root and fill in your key:
 ```
-VITE_TMDB_API_KEY=someApiKeyHere
+TMDB_API_KEY=
+VITE_TMDB_API_KEY=yourKeyHere
 VITE_FRONTEND_PORT=5173
 BACKEND_PORT=5000
 ```
+`TMDB_API_KEY` is used by the server and falls back to `VITE_TMDB_API_KEY` when empty.
+Never put secrets in `VITE_*` variables: Vite includes them in the browser bundle.
 
 ### Running the Website
 The dev servers for both the ExpressJS server and React client can be run concurrently through one command from the project root:

@@ -34,7 +34,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     port: parsePort(env.BACKEND_PORT, 5000, "BACKEND_PORT"),
     frontendOrigin: `http://localhost:${frontendPort}`,
     tmdbApiKey,
-    mongoUri: env.MONGO_URI,
+    mongoUri: env.MONGODB_URI,
     jwtSecret: env.JWT_SECRET,
     llmApiKey: env.LLM_API_KEY,
   };
