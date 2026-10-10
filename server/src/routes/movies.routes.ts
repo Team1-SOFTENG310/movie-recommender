@@ -1,9 +1,12 @@
-import { Router } from 'express';
-import { getRandomMovie } from '../controllers/movies.controller.js';
-// import { getAll, getOne, create, update, remove } from '../controllers/example.controller.js';
+// src/routes/movies.routes.ts
+import { Router } from "express";
+import { createMoviesController, type MoviesDeps } from "../controllers/movies.controller.js";
 
-const router = Router();
+export function createMoviesRouter(deps: MoviesDeps): Router {
+  const router = Router();
+  const { getRandomMovie } = createMoviesController(deps);
 
-router.get('/random', getRandomMovie);
+  router.get("/random", getRandomMovie);
 
-export default router;
+  return router;
+}

@@ -1,39 +1,33 @@
+// src/controllers/movies.controller.ts
 import { randomInt } from "node:crypto";
+import type { RequestHandler } from "express";
+import { HttpError, type ErrorResponse } from "../errors.js";
+import { asyncHandler } from "../middleware/error.middleware.js";
+import type { TmdbClient } from "../tmdb/tmdb.client.js";
+import type { TmdbMovieSummary } from "../tmdb/tmdb.types.js";
 
-const TMDB_PAGE_MAX = 500 // TMDB defined max page limit, pretty sure it extends beyond that
-const DISCOVER_URL = "https://api.themoviedb.org/3/discover/movie";
+const TMDB_PAGE_MAX = 500; // TMDB rejects discover pages above 500
 
-/**
- * Selects a random page given randRange for the TMDB url
- * @returns A populated url with a random number for the page field
- */
-const randomPage = () => {
-    const randomUrl = new URL(DISCOVER_URL);
-    randomUrl.searchParams.set("api_key", process.env.VITE_TMDB_API_KEY);
-    randomUrl.searchParams.set("page", String(randomInt(1, TMDB_PAGE_MAX)));
-    randomUrl.searchParams.set("vote_average.gte", String(0));
-    return randomUrl.toString()
+export interface MoviesDeps {
+  tmdb: TmdbClient;
 }
 
-const randomResult = (json) => {
-    return json.results[randomInt(0,json.results.length)];
-}
+export function createMoviesController({ tmdb }: MoviesDeps) {
+  const getRandomMovie: RequestHandler<{}, TmdbMovieSummary | ErrorResponse> = asyncHandler(
+    async (_req, res) => {
+      const page = await tmdb.discover({
+        page: String(randomInt(1, TMDB_PAGE_MAX)),
+        "vote_average.gte": "0",
+      });
 
-export const getRandomMovie = async (_req, res) => {
-    try {
-        const apiResult = await fetch(randomPage(), {
-            method: "GET",
-            headers: { accept: "application/json" }
-        })
+      // Check before randomInt: randomInt(0, 0) throws a RangeError
+      if (page.results.length === 0) throw new HttpError(404, "No movies found");
 
-        if (!apiResult.ok) {
-            throw new Error(`TMDB request failed with status code: ${apiResult.status}`);
-        }
+      const movie = page.results[randomInt(0, page.results.length)];
+      if (!movie) throw new HttpError(404, "No movies found");
+      res.json(movie);
+    },
+  );
 
-        const data = await apiResult.json();
-        res.json(randomResult(data));
-
-    } catch (err) {
-        res.status(500).json({ message: err.message })
-    }
+  return { getRandomMovie };
 }

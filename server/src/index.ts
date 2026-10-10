@@ -1,24 +1,14 @@
-import express from "express";
-import cors from "cors";
-import {fileURLToPath} from "node:url";
-import path from "node:path"
+import path from "node:path";
 import dotenv from "dotenv";
-import movieRoutes from "./routes/movies.routes.js";
+import { createApp } from "./app.js";
+import { loadConfig } from "./config.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Root .env; same relative path works from src/ (tsx) and dist/ (node)
+dotenv.config({ path: path.resolve(import.meta.dirname, "../../.env") });
 
-dotenv.config({path: path.join(__dirname, "../.env")});
+const config = loadConfig();
+// Member 1: connect to Mongo here when config.mongoUri is set
 
-const app = express();
-app.disable("x-powered-by");
-const PORT = process.env.BACKEND_PORT || 5000;
-
-app.use(cors({ origin: `http://localhost:${process.env.VITE_FRONTEND_PORT}`}));
-app.use(express.json());
-
-// Routes
-app.use("/api/movies", movieRoutes);
-
-app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
-
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+createApp(config).listen(config.port, () => {
+  console.log(`Server running on port ${config.port}`);
+});
