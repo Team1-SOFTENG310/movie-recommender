@@ -17,8 +17,13 @@ function parsePort(value: string | undefined, fallback: number, name: string): n
   return port;
 }
 
+function nonEmpty(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
-  const tmdbApiKey = (env.TMDB_API_KEY ?? env.VITE_TMDB_API_KEY)?.trim();
+  const tmdbApiKey = nonEmpty(env.TMDB_API_KEY) ?? nonEmpty(env.VITE_TMDB_API_KEY);
   if (!tmdbApiKey) {
     throw new Error("Missing TMDB API key: set TMDB_API_KEY (or VITE_TMDB_API_KEY) in the root .env");
   }

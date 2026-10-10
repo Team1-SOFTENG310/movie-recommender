@@ -1,9 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import request from "supertest";
 import { createApp } from "../app.js";
-import type { AppConfig } from "../config.js";
-import type { TmdbClient } from "../tmdb/tmdb.client.js";
-import type { TmdbMovieSummary, TmdbPaginated } from "../tmdb/tmdb.types.js";
+import type { TmdbMovieSummary } from "../tmdb/tmdb.types.js";
+import { fakeTmdb, movie, pageOf, testConfig } from "../../test/fixtures.js";
 
 // Typed with the (min, max) => number overload; vi.mocked(randomInt) would pick
 // the callback overload (returns void) and reject mockReturnValue(number)
@@ -14,29 +13,10 @@ vi.mock("node:crypto", async (importOriginal) => ({
   randomInt: randomIntMock,
 }));
 
-const config: AppConfig = { port: 0, frontendOrigin: "http://localhost:5173", tmdbApiKey: "test" };
-
-const movie = (id: number): TmdbMovieSummary => ({
-  id,
-  title: `Movie ${id}`,
-  release_date: null,
-  poster_path: null,
-  overview: null,
-  genre_ids: [],
-  vote_average: null,
-});
-
-const pageOf = (results: TmdbMovieSummary[]): TmdbPaginated<TmdbMovieSummary> => ({
-  page: 1,
-  results,
-  total_pages: 1,
-  total_results: results.length,
-});
-
 function setup(results: TmdbMovieSummary[]) {
-  const discover = vi.fn<TmdbClient["discover"]>().mockResolvedValue(pageOf(results));
-  const app = createApp(config, { tmdb: { discover, getMovie: vi.fn<TmdbClient["getMovie"]>() } });
-  return { app, discover };
+  const tmdb = fakeTmdb();
+  tmdb.discover.mockResolvedValue(pageOf(results));
+  return { app: createApp(testConfig, { tmdb }), discover: tmdb.discover };
 }
 
 describe("getRandomMovie", () => {

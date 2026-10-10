@@ -32,7 +32,12 @@ export function createTmdbClient(apiKey: string, fetchImpl: typeof fetch = fetch
     if (!res.ok) {
       throw new HttpError(502, `TMDB request failed with status code: ${res.status}`);
     }
-    return res.json();
+
+    try {
+      return await res.json();
+    } catch {
+      throw new HttpError(502, "TMDB returned invalid JSON");
+    }
   }
 
   return {
