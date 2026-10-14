@@ -2,9 +2,10 @@ import { describe, it, expect, vi, beforeEach, type MockInstance } from "vitest"
 import request from "supertest";
 import { createApp } from "../../src/app.js";
 import { createTmdbClient, type TmdbClient } from "../../src/tmdb/tmdb.client.js";
-import { fakeTmdb, movie, pageOf, testConfig } from "../fixtures.js";
+import { fakeDeps, fakeTmdb, movie, pageOf, testConfig } from "../fixtures.js";
 
-const appWith = (tmdb: TmdbClient = fakeTmdb()) => createApp(testConfig, { tmdb });
+const appWith = (tmdb: TmdbClient = fakeTmdb(), isDatabaseReady = () => true) =>
+  createApp(testConfig, fakeDeps({ tmdb, isDatabaseReady }));
 
 describe("app (integration)", () => {
   let consoleError: MockInstance<typeof console.error>;
@@ -15,11 +16,18 @@ describe("app (integration)", () => {
   });
 
   describe("GET /api/health", () => {
-    it("returns 200 { status: 'ok' }", async () => {
-      const res = await request(appWith()).get("/api/health");
+    it("reports unavailable until MongoDB is connected", async () => {
+      const res = await request(appWith(fakeTmdb(), () => false)).get("/api/health");
+
+      expect(res.status).toBe(503);
+      expect(res.body).toEqual({ status: "unavailable", database: "disconnected" });
+    });
+
+    it("reports healthy when MongoDB is connected", async () => {
+      const res = await request(appWith(fakeTmdb(), () => true)).get("/api/health");
 
       expect(res.status).toBe(200);
-      expect(res.body).toEqual({ status: "ok" });
+      expect(res.body).toEqual({ status: "ok", database: "connected" });
     });
   });
 

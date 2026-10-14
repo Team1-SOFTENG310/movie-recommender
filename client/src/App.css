@@ -8,38 +8,80 @@
   display: none;
 }
 
+/* Gold-outlined pill so the filters are easy to find; filled gold while open. */
 .filter-toggle {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
-  margin: 1rem auto 0;
-  background: none;
-  border: none;
+  gap: 0.5rem;
+  margin: 0.875rem auto 0;
+  padding: 0.55rem 1.1rem;
+  background-color: rgba(200, 169, 110, 0.08);
+  border: 1px solid rgba(200, 169, 110, 0.5);
+  border-radius: 9999px;
   cursor: pointer;
   font-family: var(--font-body);
-  font-size: 0.7rem;
-  letter-spacing: 0.1em;
-  color: #4a4852;
-  transition: color 0.2s;
-  padding: 0.25rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #e8e4de;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
 }
 
 .filter-toggle:hover {
-  color: #9b96a3;
+  background-color: rgba(200, 169, 110, 0.16);
+  border-color: #c8a96e;
+}
+
+.filter-toggle:focus-visible {
+  outline: 2px solid #c8a96e;
+  outline-offset: 3px;
+}
+
+.filter-toggle[aria-expanded="true"] {
+  background-color: #c8a96e;
+  border-color: #c8a96e;
+  color: #0c0c0f;
 }
 
 .filter-toggle__icon {
-  display: inline-block;
+  flex-shrink: 0;
+  color: #c8a96e;
+}
+
+.filter-toggle[aria-expanded="true"] .filter-toggle__icon {
+  color: inherit;
+}
+
+.filter-toggle__chevron {
+  flex-shrink: 0;
   transition: transform 0.25s;
 }
 
+.filter-toggle[aria-expanded="true"] .filter-toggle__chevron {
+  transform: rotate(180deg);
+}
+
 .filter-toggle__dot {
-  width: 5px;
-  height: 5px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background-color: #c8a96e;
+  box-shadow: 0 0 6px rgba(200, 169, 110, 0.8);
   flex-shrink: 0;
+}
+
+.filter-toggle[aria-expanded="true"] .filter-toggle__dot {
+  background-color: #0c0c0f;
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .filter-toggle,
+  .filter-toggle__chevron {
+    transition: none;
+  }
 }
 
 .filter-panel-wrap {

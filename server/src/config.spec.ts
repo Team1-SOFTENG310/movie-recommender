@@ -11,6 +11,7 @@ describe("loadConfig", () => {
         port: 5000,
         frontendOrigin: "http://localhost:5173",
         tmdbApiKey: "tmdb-key",
+        isProduction: false,
       });
     });
 
@@ -66,6 +67,18 @@ describe("loadConfig", () => {
     const config = loadConfig({ ...withKey, MONGODB_URI: "mongodb://x", JWT_SECRET: "s", LLM_API_KEY: "l" });
 
     expect(config).toMatchObject({ mongoUri: "mongodb://x", jwtSecret: "s", llmApiKey: "l" });
+  });
+
+  it("treats an empty MONGODB_URI as unset", () => {
+    expect(loadConfig({ ...withKey, MONGODB_URI: "  " }).mongoUri).toBeUndefined();
+  });
+
+  it.each([
+    ["production", true],
+    ["development", false],
+    ["test", false],
+  ])("sets isProduction for NODE_ENV=%s", (nodeEnv, expected) => {
+    expect(loadConfig({ ...withKey, NODE_ENV: nodeEnv }).isProduction).toBe(expected);
   });
 
   it("reads process.env by default", () => {

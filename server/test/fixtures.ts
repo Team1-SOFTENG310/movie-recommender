@@ -1,5 +1,6 @@
 // Shared test data and fakes; not a spec file, so Vitest doesn't run it
 import { vi } from "vitest";
+import type { AppDeps } from "../src/app.js";
 import type { AppConfig } from "../src/config.js";
 import type { TmdbClient } from "../src/tmdb/tmdb.client.js";
 import type { TmdbMovieDetails, TmdbMovieSummary, TmdbPaginated } from "../src/tmdb/tmdb.types.js";
@@ -8,6 +9,7 @@ export const testConfig: AppConfig = {
   port: 0,
   frontendOrigin: "http://localhost:5173",
   tmdbApiKey: "test-key",
+  isProduction: false,
 };
 
 export const movie = (id: number): TmdbMovieSummary => ({
@@ -49,6 +51,11 @@ export function fakeTmdb() {
     discover: vi.fn<TmdbClient["discover"]>(),
     getMovie: vi.fn<TmdbClient["getMovie"]>(),
   } satisfies TmdbClient;
+}
+
+// Every createApp dependency faked; pass overrides for the ones a test cares about
+export function fakeDeps(overrides: Partial<AppDeps> = {}): AppDeps {
+  return { tmdb: fakeTmdb(), isDatabaseReady: () => true, ...overrides };
 }
 
 // Returns what a promise rejected with, so tests can check status and message without a cast

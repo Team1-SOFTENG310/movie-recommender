@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import request from "supertest";
 import { createApp } from "../app.js";
 import type { TmdbMovieSummary } from "../tmdb/tmdb.types.js";
-import { fakeTmdb, movie, pageOf, testConfig } from "../../test/fixtures.js";
+import { fakeDeps, fakeTmdb, movie, pageOf, testConfig } from "../../test/fixtures.js";
 
 // Typed with the (min, max) => number overload; vi.mocked(randomInt) would pick
 // the callback overload (returns void) and reject mockReturnValue(number)
@@ -16,7 +16,7 @@ vi.mock("node:crypto", async (importOriginal) => ({
 function setup(results: TmdbMovieSummary[]) {
   const tmdb = fakeTmdb();
   tmdb.discover.mockResolvedValue(pageOf(results));
-  return { app: createApp(testConfig, { tmdb }), discover: tmdb.discover };
+  return { app: createApp(testConfig, fakeDeps({ tmdb })), discover: tmdb.discover };
 }
 
 describe("getRandomMovie", () => {

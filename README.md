@@ -26,15 +26,21 @@ npm run install:all
 ### Setting up `.env`
 
 Because the website uses TMDB, you need a TMDB API key.
-Copy `.env.example` to `.env` in the project root and fill in your key:
+The website uses mongoDB for user profiles, and rerquires both login credentials and for your current IP address to be whitelisted. Please get in contact on discord or at swal289@aucklandduni.ac.nz
+Copy `.env.example` to `.env` in the project root and fill in your values:
 ```
 TMDB_API_KEY=
 VITE_TMDB_API_KEY=yourKeyHere
 VITE_FRONTEND_PORT=5173
 BACKEND_PORT=5000
+MONGODB_USERNAME="user"
+MONGODB_PASSWORD="password"
+MONGODB_URI="uri"
 ```
 `TMDB_API_KEY` is used by the server and falls back to `VITE_TMDB_API_KEY` when empty.
 Never put secrets in `VITE_*` variables: Vite includes them in the browser bundle.
+
+Without a reachable `MONGODB_URI`, the server still starts in development ("degraded mode") and `/api/health` returns `503`. With `NODE_ENV=production` it refuses to start instead. To check your MongoDB connection, run `npm run test:db` from `server/`.
 
 ### Running the Website
 The dev servers for both the ExpressJS server and React client can be run concurrently through one command from the project root:
@@ -48,6 +54,8 @@ The frontend server will be open on `localhost:5173` by default, while the backe
 
 ## Learn More
 If you want to contribute or learn more about the project, please consider viewing the [Contributor Guidelines](CONTRIBUTING.md).
+
+For an explanation of the application flow and the responsibilities of its components and modules, see the [Project Guide](PROJECT_GUIDE.md).
 
 You may also wish to view our [Code of Conduct](CODE_OF_CONDUCT.md).
 

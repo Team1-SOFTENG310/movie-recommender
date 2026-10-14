@@ -20,16 +20,18 @@ The project is split into two folders, the `client/` and `server/`. Both run on 
 
 The `client/` relates to the frontend, utilising React Components and CSS. There is an api folder for an api fetch call onto the backend.
 
-The `server/` relates to the backend, utilising ExpressJS and TypeScript. Because this project utilises TMDB, this mostly pertains to sending get requests and processing the response data. Currently MongoDB is not utilised in the project.
+The `server/` relates to the backend, utilising ExpressJS and TypeScript. Because this project utilises TMDB, this mostly pertains to sending get requests and processing the response data. MongoDB (via Mongoose) stores user profiles.
 
 ## Adding a Backend Route
 
 ### Where things live
 ```
 server/src/
-  index.ts             Entry point: loads .env, loadConfig(), starts the server
-  app.ts               createApp(config, deps): middleware, routers, error handling
+  index.ts             Entry point: loads .env, loadConfig(), calls startServer()
+  startServer.ts       Connects to MongoDB, then listens (degraded mode outside production)
+  app.ts               createApp(config, deps): middleware, routers, /api/health, error handling
   config.ts            AppConfig + loadConfig(): every environment variable goes through here
+  db.ts                connectDatabase(), isDatabaseConnected()
   errors.ts            HttpError, ErrorResponse
   middleware/          asyncHandler, notFound, errorHandler
   tmdb/                TMDB client + response types
@@ -39,6 +41,7 @@ server/src/
 server/test/
   fixtures.ts          Shared test data and fakes
   integration/         Supertest tests against the full app
+  db.integration.ts    Live MongoDB check (npm run test:db; needs MONGODB_URI)
 ```
 
 ### Pattern: factories with injected dependencies
@@ -91,14 +94,14 @@ Build the real app with a fake TMDB client, then call it with Supertest:
 import { describe, it, expect } from "vitest";
 import request from "supertest";
 import { createApp } from "../../src/app.js";
-import { fakeTmdb, movieDetails, testConfig } from "../fixtures.js";
+import { fakeDeps, fakeTmdb, movieDetails, testConfig } from "../fixtures.js";
 
 describe("GET /api/movies/:id", () => {
   it("returns the movie", async () => {
     const tmdb = fakeTmdb();
     tmdb.getMovie.mockResolvedValue(movieDetails(550));
 
-    const res = await request(createApp(testConfig, { tmdb })).get("/api/movies/550");
+    const res = await request(createApp(testConfig, fakeDeps({ tmdb }))).get("/api/movies/550");
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual(movieDetails(550));
@@ -106,7 +109,7 @@ describe("GET /api/movies/:id", () => {
   });
 
   it("rejects a non-numeric id", async () => {
-    const res = await request(createApp(testConfig, { tmdb: fakeTmdb() })).get("/api/movies/abc");
+    const res = await request(createApp(testConfig, fakeDeps())).get("/api/movies/abc");
 
     expect(res.status).toBe(400);
     expect(res.body).toEqual({ message: "Movie id must be a positive integer" });
@@ -182,5 +185,5 @@ Backend testing is typically either unit tests on controller files, or integrati
 
 Unit tests sit next to the file they test in `server/src/` (e.g. `src/config.spec.ts`). They call the function directly and replace its dependencies with fakes — for example, `createTmdbClient("key", fakeFetch)` instead of calling the real TMDB API.
 
-Integration tests live in `server/test/integration/`. They build the real app with `createApp(testConfig, { tmdb: fakeTmdb() })` and send HTTP requests to it with `supertest`, so routing, middleware and error handling are all tested together. Shared test data and fakes are in `server/test/fixtures.ts`. See **Adding a Backend Route** below for an example.
+Integration tests live in `server/test/integration/`. They build the real app with `createApp(testConfig, fakeDeps())` (override any dependency, e.g. `fakeDeps({ tmdb })`) and send HTTP requests to it with `supertest`, so routing, middleware and error handling are all tested together. Shared test data and fakes are in `server/test/fixtures.ts`. See **Adding a Backend Route** below for an example.
 

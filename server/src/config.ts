@@ -2,8 +2,11 @@ export interface AppConfig {
   port: number;
   frontendOrigin: string;
   tmdbApiKey: string;
-  // Optional until Members 1/3 need them
+  // NODE_ENV=production; outside production the server starts without MongoDB
+  isProduction: boolean;
+  // Optional: without it the server runs in degraded mode (see startServer.ts)
   mongoUri?: string;
+  // Optional until Members 1/3 need them
   jwtSecret?: string;
   llmApiKey?: string;
 }
@@ -34,7 +37,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     port: parsePort(env.BACKEND_PORT, 5000, "BACKEND_PORT"),
     frontendOrigin: `http://localhost:${frontendPort}`,
     tmdbApiKey,
-    mongoUri: env.MONGODB_URI,
+    isProduction: env.NODE_ENV === "production",
+    mongoUri: nonEmpty(env.MONGODB_URI),
     jwtSecret: env.JWT_SECRET,
     llmApiKey: env.LLM_API_KEY,
   };
