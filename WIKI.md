@@ -6,9 +6,9 @@ This wiki denotes the project documentation, largely consisting of:
 - Group meeting minutes,
 - Other documentation details that don't quite fit anywhere else.
 
-Currently we don't require contribution to the wiki, but if you want to contribute to the project, or point out any document issues, please refer to the [Contributing Guidelines](../blob/main/CONTRIBUTING.md) document.
+Currently we don't require contribution to the wiki, but if you want to contribute to the project, or point out any document issues, please refer to the [Contributing Guidelines](CONTRIBUTING.md) document.
 
-Please also look through our [Code of Conduct](../blob/main/CODE_OF_CONDUCT.md) for expected behaviour when interacting/contributing with the project.
+Please also look through our [Code of Conduct](CODE_OF_CONDUCT.md) for expected behaviour when interacting/contributing with the project.
 
 ## SonarQube
 SonarQube was used in the project, both as a recommended linter extension when using an IDE, and also SonarCloud which provides a pre-merge check for security implications. We integrated this as soon as we were able to, and it has helped to keep our code more secure.
@@ -165,6 +165,7 @@ Listed below are the current team members, and their contributions to the projec
 - Feat/llm recommendation (PR: #4, Issue: #2)
 - docs/updating-documentation by adding meetings mins and contributions (PR: #84, Issue: #83)
 - Code review on PRs(#28, #5)
+- Code review on fn5-310 PRs(#72, #73, #74, #75, #76, #78, #80, #81, #82)
 
 ## Kenny Geng (*@imke11*)
 - Feat/random movie filters and Toast Notification (PR: #22, Issue: #21)
@@ -176,7 +177,7 @@ Listed below are the current team members, and their contributions to the projec
 - Frontend type safety and linting (PR: #11, Issue: #7)
 - Restore saved filters when returning to search (PR: #10, Issue: #8)
 - Fix flaky search tests (PR: #9, Issue: #6)
-- Code review on PRs(#19, #23, #17)
+- Code review on PRs(#23, #17)
 
 ## Dandan Wu (*@WhoWhatWhereAmI*)
 - Tidy profile logout feedback and account navigation styling (PR: #29)
@@ -188,7 +189,7 @@ Listed below are the current team members, and their contributions to the projec
 ## Scott Wallace (*@Swal289*)
 - Feat/user endpoints (PR: #19, Issue: #18)
 - Feat/Basic Database Integration (PR: #15, Issue: #14)
-- Code review on PRs(#13, #11, #10, #9)
+- Code review on PRs(#13, #10, #9), left as PR comments
 
 ## Neia Tererei (*@rbntres*)
 - Feature/backend ts migration (PR: #5, Issue: #16)
