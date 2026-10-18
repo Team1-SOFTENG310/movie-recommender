@@ -51,7 +51,6 @@ function App() {
   // Restored so the search survives a trip to a movie's page and back.
   const [query, setQuery] = useState<string>(() => readStoredQuery());
   const [filters, setFilters] = useState<DiscoverFilters>(() => readStoredFilters());
-
   const { movies, isLoading, hasSearched, hasMore, error, loadMore, retry } = useMovieResults(
     query,
     filters,
