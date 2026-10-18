@@ -106,6 +106,25 @@ export function addRelatedMovies(
   };
 }
 
+/** Every movie's direct connections, looked up by movie id. */
+export function neighbourIds(graph: MovieGraphData): Map<number, Set<number>> {
+  const neighbours = new Map<number, Set<number>>();
+  const add = (from: number, to: number) => {
+    const set = neighbours.get(from) ?? new Set<number>();
+    set.add(to);
+    neighbours.set(from, set);
+  };
+
+  for (const link of graph.links) {
+    const source = linkEndId(link.source);
+    const target = linkEndId(link.target);
+    add(source, target);
+    add(target, source);
+  }
+
+  return neighbours;
+}
+
 /** Label shown on the canvas and in the hover tooltip. */
 export function nodeLabel(node: MovieGraphNode): string {
   return node.year ? `${node.title} (${node.year})` : node.title;

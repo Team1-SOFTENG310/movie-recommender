@@ -7,6 +7,7 @@ import { errorHandler, notFound } from "./middleware/error.middleware.js";
 import { createAuthRouter } from "./routes/auth.routes.js";
 import { createLlmRecommendationRouter } from "./routes/llmRecommendation.routes.js";
 import { createMoviesRouter } from "./routes/movies.routes.js";
+import { createUsersRouter } from "./routes/users.routes.js";
 import { createTmdbClient, type TmdbClient } from "./tmdb/tmdb.client.js";
 
 export interface AppDeps {
@@ -19,13 +20,14 @@ export interface HealthResponse {
   database: "connected" | "disconnected";
 }
 
-export function createApp(
-  config: AppConfig,
-  deps: AppDeps = {
+function defaultDeps(config: AppConfig): AppDeps {
+  return {
     tmdb: createTmdbClient(config.tmdbApiKey),
     isDatabaseReady: isDatabaseConnected,
-  },
-): Express {
+  };
+}
+
+export function createApp(config: AppConfig, deps: AppDeps = defaultDeps(config)): Express {
   const app = express();
   app.disable("x-powered-by");
 
@@ -42,6 +44,7 @@ export function createApp(
     });
   });
   app.use("/api/auth", createAuthRouter(config, deps));
+  app.use("/api/users", createUsersRouter(config, deps));
   app.use("/api/movies", createMoviesRouter(deps));
   app.use("/api/llm-recommender", createLlmRecommendationRouter(config));
 

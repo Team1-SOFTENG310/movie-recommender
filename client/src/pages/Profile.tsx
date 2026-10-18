@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import ViewingHistory from "../components/ViewingHistory";
 import "./Profile.css";
 
 export default function Profile() {
   const { user, isLoading, logout } = useAuth();
+  useDocumentTitle("Your profile");
   const navigate = useNavigate();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
@@ -71,7 +74,7 @@ export default function Profile() {
         aria-labelledby="viewing-history-heading"
       >
         <h2 id="viewing-history-heading">Viewing history</h2>
-        <p>Viewing history is coming soon.</p>
+        <ViewingHistory />
       </section>
       {logoutError && (
         <p className="profile-error" role="alert">

@@ -177,4 +177,39 @@ describe("RandomButton", () => {
       ).toBeInTheDocument();
     });
   });
+  it("picks from a random page of matches, not just the most popular page", async () => {
+    server.use(
+      http.get("https://api.themoviedb.org/3/discover/movie", ({ request }) => {
+        const page = new URL(request.url).searchParams.get("page");
+        const id = page === null ? 1 : Number(page) * 100;
+        return HttpResponse.json({
+          page: Number(page ?? 1),
+          total_pages: 40,
+          total_results: 800,
+          results: [{ id, title: `Movie ${id}`, release_date: "2001-01-01", poster_path: null, overview: "", genre_ids: [], vote_average: 7 }],
+        });
+      }),
+    );
+    // 0.5 lands on page 21 of 40, then the only movie on that page
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+
+    renderWithRouter();
+    fireEvent.click(screen.getByText(/Want a random movie/i));
+    fireEvent.click(screen.getByText(/^Generate$/));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location-display").textContent).toBe("/movie/2100");
+    });
+    // Read from fetch itself: this file and the shared test setup both run a mock server,
+    // so a handler sees each request twice.
+    const requestedPages = fetchSpy.mock.calls
+      .map(([input]) => {
+        if (typeof input === "string") return new URL(input);
+        return new URL(input instanceof URL ? input.href : input.url);
+      })
+      .filter((url) => url.pathname.endsWith("/discover/movie"))
+      .map((url) => url.searchParams.get("page"));
+    expect(requestedPages).toEqual([null, "21"]);
+  });
 });

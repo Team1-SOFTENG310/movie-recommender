@@ -83,7 +83,7 @@ export default function AiRecommendationPanel({ movieId, title, year }: Readonly
           {status === "loading" && (
             <div className="ai-panel__loading" role="status" aria-live="polite">
               <span className="ai-panel__spinner" aria-hidden="true" />
-              Thinking about what you might like…
+              <span>Thinking about what you might like…</span>
             </div>
           )}
 

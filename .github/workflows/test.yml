@@ -54,3 +54,6 @@ jobs:
       - name: Run Frontend Tests
         working-directory: ./client
         run: npm run test
+      - name: Build Frontend
+        working-directory: ./client
+        run: npm run build

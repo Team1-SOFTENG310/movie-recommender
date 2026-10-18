@@ -2,11 +2,13 @@ import { useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { requestLogin } from "../api/auth";
 import { useAuth } from "../hooks/useAuth";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import "./AuthForm.css";
 
 export default function Login() {
   const navigate = useNavigate();
   const { isAuthenticated, isLoading, setUser } = useAuth();
+  useDocumentTitle("Log in");
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");

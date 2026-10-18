@@ -12,11 +12,24 @@ interface UseMovieResultsResult {
   hasMore: boolean;
   error: string | null;
   loadMore: () => void;
+  retry: () => void;
+}
+
+// TMDB pages can overlap when rankings shift between requests, so a movie on
+// page 3 may already have appeared on page 2.
+function appendNew(existing: Movie[], incoming: Movie[]): Movie[] {
+  const seen = new Set(existing.map((movie) => movie.id));
+  return [...existing, ...incoming.filter((movie) => !seen.has(movie.id))];
 }
 
 function hasAnyFilter(filters: DiscoverFilters): boolean {
   return Boolean(
-    filters.genre || filters.yearFrom || filters.yearTo || filters.ratingMin || filters.castId,
+    filters.genre ||
+      filters.yearFrom ||
+      filters.yearTo ||
+      filters.language ||
+      filters.ratingMin ||
+      filters.castId,
   );
 }
 
@@ -30,6 +43,7 @@ function applyClientSideFilters(movies: Movie[], filters: DiscoverFilters): Movi
     if (filters.yearFrom && movie.year !== null && movie.year < filters.yearFrom) return false;
     if (filters.yearTo && movie.year !== null && movie.year > filters.yearTo) return false;
     if (filters.ratingMin && (movie.voteAverage ?? 0) < filters.ratingMin) return false;
+    if (filters.language && movie.originalLanguage !== filters.language) return false;
     // Note: castId is intentionally NOT checked here. Search results
     // don't include cast data, so actor filtering only works via
     // discoverMovies. FilterPanel disables the actor input whenever a
@@ -53,6 +67,8 @@ export function useMovieResults(query: string, filters: DiscoverFilters): UseMov
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Bumped by retry() to re-run the request for the current page.
+  const [attempt, setAttempt] = useState(0);
 
   // Tracks the most recent request so a slow, stale response (e.g. from
   // a query the user has since changed away from) can't overwrite
@@ -61,10 +77,13 @@ export function useMovieResults(query: string, filters: DiscoverFilters): UseMov
 
   // Reset to page 1 whenever the query or filters change, so switching
   // filters mid-scroll doesn't append page-3 results onto a brand new
-  // filter set.
-  useEffect(() => {
+  // filter set. Done during render rather than in an effect, so the fetch
+  // below never starts for the old page number first.
+  const [searchedFor, setSearchedFor] = useState({ query, filters });
+  if (searchedFor.query !== query || searchedFor.filters !== filters) {
+    setSearchedFor({ query, filters });
     setPage(1);
-  }, [query, filters]);
+  }
 
   useEffect(() => {
     const requestId = ++requestIdRef.current;
@@ -99,13 +118,15 @@ export function useMovieResults(query: string, filters: DiscoverFilters): UseMov
         // this result rather than let it clobber more current data.
         if (requestId !== requestIdRef.current) return;
 
-        setMovies((prev) => (isFirstPage ? newMovies : [...prev, ...newMovies]));
+        setMovies((prev) => (isFirstPage ? newMovies : appendNew(prev, newMovies)));
         setTotalPages(newTotalPages);
         setHasSearched(true);
       } catch (err) {
         if (isAbortError(err)) return;
         if (requestId !== requestIdRef.current) return;
         setError(err instanceof Error ? err.message : "Failed to load movies");
+        // Results for a previous search shouldn't stay up as if they matched this one.
+        if (isFirstPage) setMovies([]);
       } finally {
         if (requestId === requestIdRef.current) setIsLoading(false);
       }
@@ -115,7 +136,7 @@ export function useMovieResults(query: string, filters: DiscoverFilters): UseMov
       clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [query, filters, page]);
+  }, [query, filters, page, attempt]);
 
   return {
     movies,
@@ -124,5 +145,6 @@ export function useMovieResults(query: string, filters: DiscoverFilters): UseMov
     hasMore: page < totalPages,
     error,
     loadMore: () => setPage((p) => p + 1),
+    retry: () => setAttempt((n) => n + 1),
   };
 }

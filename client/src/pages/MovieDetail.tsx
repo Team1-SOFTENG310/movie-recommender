@@ -1,18 +1,19 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import "./MovieDetail.css";
 
 import MovieRecommendations from "../components/MovieRecommendations";
 import MovieGraph from "../components/MovieGraph";
 import ReviewsList from "../components/ReviewsList";
-import { fetchMovieDetails } from "../api/movieDetails";
+import { fetchMovieDetails, MOVIE_NOT_FOUND } from "../api/movieDetails";
 import { isAbortError } from "../api/tmdb";
+import { PLACEHOLDER_AVATAR, PLACEHOLDER_POSTER } from "../constants/images";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { useRecordView } from "../hooks/useRecordView";
 import type { TmdbCastMember, TmdbMovieDetails } from "../types/tmdb";
 
 const IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500";
 const CAST_IMAGE_BASE = "https://image.tmdb.org/t/p/w200";
-const PLACEHOLDER_POSTER = "https://via.placeholder.com/300x450?text=No+Poster";
-const PLACEHOLDER_AVATAR = "https://via.placeholder.com/80x120?text=No+Image";
 const MAX_CAST_TO_SHOW = 5;
 
 function CastList({ cast }: Readonly<{ cast: TmdbCastMember[] }>) {
@@ -46,10 +47,30 @@ function CastList({ cast }: Readonly<{ cast: TmdbCastMember[] }>) {
 export default function MovieDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // "default" is the key of the first page loaded in this tab, so there's no earlier
+  // page in the app to go back to (the movie was opened from a link or bookmark).
+  const goBack = () => {
+    if (location.key === "default") {
+      void navigate("/");
+    } else {
+      void navigate(-1);
+    }
+  };
 
   const [movie, setMovie] = useState<TmdbMovieDetails | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  let pageTitle: string | null = null;
+  if (movie && !loading) {
+    pageTitle = movie.release_date ? `${movie.title} (${movie.release_date.slice(0, 4)})` : movie.title;
+  } else if (error) {
+    pageTitle = error === MOVIE_NOT_FOUND ? "Movie not found" : "Couldn't load movie";
+  }
+  useDocumentTitle(pageTitle);
+  useRecordView(movie && !loading ? movie.id : null);
 
   useEffect(() => {
     if (!id) {
@@ -70,7 +91,12 @@ export default function MovieDetail() {
         if (isAbortError(err)) {
           return;
         }
-        setError(err instanceof Error ? err.message : "Movie not found");
+        // Anything other than a 404 (network down, TMDB error) gets a general message.
+        setError(
+          err instanceof Error && err.message === MOVIE_NOT_FOUND
+            ? MOVIE_NOT_FOUND
+            : "Couldn't load this movie. Please try again.",
+        );
       } finally {
         if (!controller.signal.aborted) {
           setLoading(false);
@@ -101,26 +127,33 @@ export default function MovieDetail() {
 
   //Error page section
   if (error || !movie) {
+    const isNotFound = !error || error === MOVIE_NOT_FOUND;
     return (
       <div className="page-container">
         <div className="error-container">
           <span className="error-icon">🎥</span>
 
           <h1 className="error-title">
-            {error === "Movie not found" ? "404" : "Oops!"}
+            {isNotFound ? "404" : "Oops!"}
           </h1>
 
           <p className="error-message">{error || "Movie not found"}</p>
 
           <p className="error-hint">
-            The film you're looking for might have been moved, deleted,
-            <br />
-            or never existed 💀
+            {isNotFound ? (
+              <>
+                The film you're looking for might have been moved, deleted,
+                <br />
+                or never existed 💀
+              </>
+            ) : (
+              "Check your connection and try again."
+            )}
           </p>
 
           <button
             type="button"
-            onClick={() => void navigate(-1)}
+            onClick={() => void navigate("/")}
             className="error-back-button"
           >
             <span className="arrow">←</span> Back to Search
@@ -168,12 +201,8 @@ export default function MovieDetail() {
   //Movie page section
   return (
     <div className="page-container">
-      <button
-        type="button"
-        onClick={() => void navigate(-1)}
-        className="back-button"
-      >
-        ← Back to Search
+      <button type="button" onClick={goBack} className="back-button">
+        ← Back
       </button>
 
       <div className="movie-layout">

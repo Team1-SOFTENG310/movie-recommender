@@ -53,7 +53,7 @@ describe("App filter persistence", () => {
 
     await user.selectOptions(screen.getByLabelText(/genre/i), "28");
     await user.click(screen.getByText("Open movie"));
-    await user.click(await screen.findByText(/← Back to Search/i));
+    await user.click(await screen.findByRole("button", { name: "← Back" }));
 
     expect(screen.getByLabelText(/genre/i)).toHaveValue("28");
     expect(savedFilters()).toMatchObject({ genre: 28 });

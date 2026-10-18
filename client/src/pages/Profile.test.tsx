@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { http, HttpResponse } from "msw";
@@ -47,6 +47,29 @@ function useAuthenticatedSession() {
     http.get(`${BASE_URL}/auth/me`, () =>
       HttpResponse.json({ user: testUser }),
     ),
+  );
+}
+
+/** Serves this viewing history, and a TMDB entry "Movie <id>" (released 2000 + id) for each movie. */
+function useHistory(history: { movieId: number; viewedAt: string }[]) {
+  server.use(
+    http.get(`${BASE_URL}/users/me/history`, () => HttpResponse.json({ history })),
+    http.get("https://api.themoviedb.org/3/movie/:id", ({ params }) => {
+      const id = Number(params.id);
+      if (id === 404) {
+        return HttpResponse.json({ status_message: "Not found" }, { status: 404 });
+      }
+      return HttpResponse.json({
+        id,
+        title: `Movie ${id}`,
+        overview: null,
+        poster_path: null,
+        release_date: `${2000 + id}-01-01`,
+        runtime: null,
+        vote_average: null,
+        genres: [],
+      });
+    }),
   );
 }
 
@@ -143,15 +166,112 @@ describe("Profile", () => {
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
-  it("includes a placeholder for viewing history", async () => {
+  it("shows an empty viewing history with a link back to the movies", async () => {
     useAuthenticatedSession();
     renderProfile();
 
     await waitForProfile();
+    const history = screen.getByRole("region", { name: "Viewing history" });
 
-    expect(
-      screen.getByRole("region", { name: "Viewing history" }),
-    ).toHaveTextContent("Viewing history is coming soon.");
+    expect(await within(history).findByText(/Movies you open will appear here/)).toBeInTheDocument();
+    expect(within(history).getByRole("link", { name: "Find something to watch" })).toHaveAttribute("href", "/");
+  });
+
+  it("lists recently viewed movies, newest first, linking to each one", async () => {
+    useAuthenticatedSession();
+    useHistory([
+      { movieId: 2, viewedAt: "2026-10-19T10:00:00.000Z" },
+      { movieId: 1, viewedAt: "2026-10-18T10:00:00.000Z" },
+    ]);
+    renderProfile();
+
+    await waitForProfile();
+    const history = screen.getByRole("region", { name: "Viewing history" });
+    const links = await within(history).findAllByRole("link", { name: /Movie \d/ });
+
+    expect(links.map((link) => link.getAttribute("href"))).toEqual(["/movie/2", "/movie/1"]);
+    expect(links[0]).toHaveTextContent("Movie 2");
+    expect(links[0]).toHaveTextContent("2002");
+  });
+
+  it("skips a viewed movie TMDB can no longer find", async () => {
+    useAuthenticatedSession();
+    useHistory([
+      { movieId: 2, viewedAt: "2026-10-19T10:00:00.000Z" },
+      { movieId: 404, viewedAt: "2026-10-18T10:00:00.000Z" },
+    ]);
+    renderProfile();
+
+    await waitForProfile();
+    const history = screen.getByRole("region", { name: "Viewing history" });
+
+    expect(await within(history).findAllByRole("link", { name: /Movie \d/ })).toHaveLength(1);
+  });
+
+  it("clears the viewing history after confirmation", async () => {
+    const user = userEvent.setup();
+    let cleared = false;
+    useAuthenticatedSession();
+    useHistory([{ movieId: 2, viewedAt: "2026-10-19T10:00:00.000Z" }]);
+    server.use(
+      http.delete(`${BASE_URL}/users/me/history`, () => {
+        cleared = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    renderProfile();
+
+    await waitForProfile();
+    const history = screen.getByRole("region", { name: "Viewing history" });
+    await within(history).findByRole("link", { name: /Movie 2/ });
+
+    await user.click(within(history).getByRole("button", { name: "Clear history…" }));
+    expect(cleared).toBe(false);
+    await user.click(within(history).getByRole("button", { name: "Clear history" }));
+
+    expect(cleared).toBe(true);
+    expect(await within(history).findByText(/Movies you open will appear here/)).toBeInTheDocument();
+  });
+
+  it("can cancel clearing the viewing history", async () => {
+    const user = userEvent.setup();
+    useAuthenticatedSession();
+    useHistory([{ movieId: 2, viewedAt: "2026-10-19T10:00:00.000Z" }]);
+    renderProfile();
+
+    await waitForProfile();
+    const history = screen.getByRole("region", { name: "Viewing history" });
+    await within(history).findByRole("link", { name: /Movie 2/ });
+
+    await user.click(within(history).getByRole("button", { name: "Clear history…" }));
+    await user.click(within(history).getByRole("button", { name: "Cancel" }));
+
+    expect(within(history).getByRole("link", { name: /Movie 2/ })).toBeInTheDocument();
+    expect(within(history).getByRole("button", { name: "Clear history…" })).toBeInTheDocument();
+  });
+
+  it("shows an error with a working retry when the history can't load", async () => {
+    const user = userEvent.setup();
+    let fail = true;
+    useAuthenticatedSession();
+    server.use(
+      http.get(`${BASE_URL}/users/me/history`, () =>
+        fail
+          ? HttpResponse.json({ message: "Account service is unavailable" }, { status: 503 })
+          : HttpResponse.json({ history: [{ movieId: 2, viewedAt: "2026-10-19T10:00:00.000Z" }] }),
+      ),
+    );
+    renderProfile();
+
+    await waitForProfile();
+    const history = screen.getByRole("region", { name: "Viewing history" });
+    expect(await within(history).findByRole("alert")).toHaveTextContent("Couldn't load your viewing history.");
+
+    fail = false;
+    await user.click(within(history).getByRole("button", { name: "Try again" }));
+
+    // Title from the default TMDB mock in test/handlers.ts
+    expect(await within(history).findByRole("link", { name: /Final Destination Bloodlines/ })).toBeInTheDocument();
   });
 
   it("returns to movies without logging out when Back to movies is clicked", async () => {

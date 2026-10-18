@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { http, HttpResponse } from "msw";
@@ -13,32 +13,37 @@ vi.mock("react-force-graph-2d", () => ({
 default: ({
     graphData,
     onNodeClick,
+    onNodeHover,
     nodeCanvasObject,
 }: Readonly<{
     graphData: MovieGraphData;
     onNodeClick: (node: MovieGraphNode) => void;
+    onNodeHover?: (node: MovieGraphNode | null) => void;
     nodeCanvasObject?: (node: MovieGraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => void;
 }>) => (
     <div data-testid="graph">
     {graphData.nodes.map((node) => {
         let fillColor = "";
+        let alpha = 1;
 
-        
+
         const fakeCtx = {
             // spied fields used in constructor - required
             beginPath: vi.fn<CanvasRenderingContext2D["beginPath"]>(),
             arc: vi.fn<CanvasRenderingContext2D["arc"]>(),
             fill: vi.fn<() => void>(),
             stroke: vi.fn<() => void>(),
-            fillText: vi.fn<CanvasRenderingContext2D["fillText"]>(),
-            font: "",
-            textAlign: "",
-            textBaseline: "",
 
             // fill hook when rendered, capture value
             set fillStyle(val: string) {
                 if (!fillColor) {
                 fillColor = val;
+                }
+            },
+            // first value set is the node's own opacity (it is reset to 1 afterwards)
+            set globalAlpha(val: number) {
+                if (alpha === 1) {
+                alpha = val;
                 }
             },
         } as unknown as CanvasRenderingContext2D; // force mock as canvas context
@@ -50,15 +55,18 @@ default: ({
 
         // check node color (indicating level 0/1/2), true = level 0/1
         const isExpanded = fillColor !== "#5c5866";
-    
+
         // returns button per node to mock as clickable on canvas
         return (
             <button
                 key={node.id}
                 type="button"
                 data-node-id={node.id}
+                data-faded={alpha < 1} // read to check hover highlighting in tests
                 aria-expanded={isExpanded} // read to check expansion state in tests
                 onClick={() => onNodeClick(node)}
+                onMouseEnter={() => onNodeHover?.(node)}
+                onMouseLeave={() => onNodeHover?.(null)}
             >
                 {node.title}
             </button>
@@ -211,6 +219,82 @@ describe("MovieGraph", () => {
         await userEvent.click(screen.getByRole("button", { name: "Root Movie" }));
 
         expect(screen.getByTestId("location-display").textContent).toBe("/");
+    });
+
+    it("explains what the node colours mean", () => {
+        renderGraph();
+
+        const key = screen.getByRole("list", { name: "Graph key" });
+        expect(within(key).getByText("This movie")).toBeInTheDocument();
+        expect(within(key).getByText("Recommended for this movie")).toBeInTheDocument();
+        expect(within(key).getByText("Related through another movie")).toBeInTheDocument();
+    });
+
+    it("has zoom and fit-to-view controls", () => {
+        renderGraph();
+
+        expect(screen.getByRole("button", { name: "Zoom in" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Zoom out" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Fit graph to view" })).toBeInTheDocument();
+    });
+
+    it("fades movies that aren't connected to the hovered one", async () => {
+        useMultiLevelRecommendations();
+        renderGraph();
+        await screen.findByRole("button", { name: "unique" });
+
+        await userEvent.hover(screen.getByRole("button", { name: "movie B" }));
+
+        // movie B links to the root, "shared" and "unique"; movie A does not link to it
+        expect(screen.getByRole("button", { name: "movie B" })).toHaveAttribute("data-faded", "false");
+        expect(screen.getByRole("button", { name: "Root Movie" })).toHaveAttribute("data-faded", "false");
+        expect(screen.getByRole("button", { name: "shared" })).toHaveAttribute("data-faded", "false");
+        expect(screen.getByRole("button", { name: "unique" })).toHaveAttribute("data-faded", "false");
+        expect(screen.getByRole("button", { name: "movie A" })).toHaveAttribute("data-faded", "true");
+
+        await userEvent.unhover(screen.getByRole("button", { name: "movie B" }));
+
+        expect(screen.getByRole("button", { name: "movie A" })).toHaveAttribute("data-faded", "false");
+    });
+
+    it("clears the hover highlight when the page moves to another movie", async () => {
+        useMultiLevelRecommendations();
+        const { rerender } = renderGraph();
+        await screen.findByRole("button", { name: "unique" });
+        await userEvent.hover(screen.getByRole("button", { name: "shared" }));
+
+        // e.g. a movie picked from the recommendations row, not from the graph
+        rerender(
+            <MemoryRouter>
+                <MovieGraph movieId={3} title="movie B" year={2001} />
+            </MemoryRouter>,
+        );
+        await screen.findByText("3 movies, 2 connections");
+
+        // "unique" isn't linked to "shared", so it would be faded if the old hover stuck
+        expect(screen.getByRole("button", { name: "unique" })).toHaveAttribute("data-faded", "false");
+    });
+
+    it("says so when there are no related movies", async () => {
+        server.use(
+            http.get("https://api.themoviedb.org/3/movie/:id/recommendations", () =>
+                HttpResponse.json({ results: [], page: 1, total_pages: 1, total_results: 0 }),
+            ),
+        );
+        renderGraph();
+
+        expect(await screen.findByText("No related movies found.")).toBeInTheDocument();
+    });
+
+    it("leaves plain scrolling to the page and explains how to zoom", () => {
+        renderGraph();
+        const canvas = screen.getByTestId("graph").parentElement as HTMLElement;
+
+        fireEvent.wheel(canvas, { deltaY: 100, ctrlKey: true });
+        expect(screen.queryByText(/\+ scroll to zoom/)).not.toBeInTheDocument();
+
+        fireEvent.wheel(canvas, { deltaY: 100 });
+        expect(screen.getByText("Use Ctrl + scroll to zoom")).toBeInTheDocument();
     });
 
     it("reports a failure to load related movies", async () => {

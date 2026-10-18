@@ -164,6 +164,15 @@ describe("AiRecommendationPanel", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
+  it("explains when the server is rate-limiting AI requests", async () => {
+    mockAi(() => HttpResponse.json({ message: "Too many requests" }, { status: 429 }));
+    renderPanel();
+
+    await userEvent.click(openButton());
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/try again in a few minutes/i);
+  });
+
   it("closes with the close button and with Escape", async () => {
     mockAi();
     renderPanel();

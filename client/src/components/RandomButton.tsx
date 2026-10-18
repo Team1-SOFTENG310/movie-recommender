@@ -6,6 +6,9 @@ import { MOVIE_GENRES } from "../constants/genres";
 import { MOVIE_LANGUAGES } from "../constants/languages";
 import "../styles/RandomButton.css"
 
+// TMDB's discover endpoint rejects pages above 500.
+const MAX_TMDB_PAGE = 500;
+
 export default function RandomButton() {
     const navigate = useNavigate();
     const [buttonName, setButtonName] = useState("Want a random movie?");
@@ -22,11 +25,18 @@ export default function RandomButton() {
             setButtonName("Generating...")
             setToastMessage(null);
           
-            const response = await discoverMovies({
+            const criteria = {
                 genre: filters.genre ? Number(filters.genre) : undefined,
                 language: filters.language || undefined,
                 ratingMin: filters.minRating > 0 ? filters.minRating : undefined,
-            });
+            };
+            // Page 1 alone is always the same ~20 most popular movies, so use it to
+            // learn how many pages match and then pick from a random one of those.
+            const firstPage = await discoverMovies(criteria);
+            const lastPage = Math.min(firstPage.totalPages, MAX_TMDB_PAGE);
+            const randomPage = Math.floor(Math.random() * lastPage) + 1; //NOSONAR
+            const response =
+                randomPage > 1 ? await discoverMovies({ ...criteria, page: randomPage }) : firstPage;
             if (!response.results || response.results.length === 0) {
                 setToastMessage("No movie found matching your criteria. Please adjust filters.");
                 setButtonName("Want a random movie?");

@@ -3,6 +3,7 @@ import {
   addRelatedMovies,
   createGraph,
   linkEndId,
+  neighbourIds,
   nodeLabel,
   type MovieGraphData,
 } from "./movieGraphData";
@@ -120,6 +121,30 @@ describe("linkEndId", () => {
   it("reads an id from both link end forms", () => {
     expect(linkEndId(7)).toBe(7);
     expect(linkEndId({ id: 7, title: "A", year: null, depth: 1 })).toBe(7);
+  });
+});
+
+describe("neighbourIds", () => {
+  it("lists each movie's connections in both directions", () => {
+    let graph = createGraph(root);
+    graph = addRelatedMovies(graph, 1, [movie(2, "A"), movie(3, "B")], 10);
+    graph = addRelatedMovies(graph, 2, [movie(4, "C")], 10);
+
+    const neighbours = neighbourIds(graph);
+
+    expect(neighbours.get(1)).toEqual(new Set([2, 3]));
+    expect(neighbours.get(2)).toEqual(new Set([1, 4]));
+    expect(neighbours.get(4)).toEqual(new Set([2]));
+  });
+
+  it("reads links whose ends have been swapped for node objects", () => {
+    const a = { id: 1, title: "A", year: null, depth: 0 };
+    const b = { id: 2, title: "B", year: null, depth: 1 };
+
+    const neighbours = neighbourIds({ nodes: [a, b], links: [{ source: a, target: b }] });
+
+    expect(neighbours.get(1)).toEqual(new Set([2]));
+    expect(neighbours.get(2)).toEqual(new Set([1]));
   });
 });
 
