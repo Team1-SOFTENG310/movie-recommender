@@ -14,17 +14,39 @@ const UNUSED_GENRE: DiscoverFilters = { genre: 999 };
 const NO_FILTERS: DiscoverFilters = {};
 const FRENCH: DiscoverFilters = { language: "fr" };
 
-function rawMovie(id: number, language = "en") {
+function rawMovie(id: number, language = "en", genreIds = [28]) {
   return {
     id,
     title: `Movie ${id}`,
     release_date: "2000-01-01",
     poster_path: null,
     overview: "",
-    genre_ids: [28],
+    genre_ids: genreIds,
     vote_average: 7,
     original_language: language,
   };
+}
+
+const DRAMA = 18;
+
+// A title search whose pages hold only dramas, except the pages listed in
+// `actionPages`; records which pages were requested.
+function mockSearchPages(totalPages: number, actionPages: number[]) {
+  const requested: number[] = [];
+  server.use(
+    http.get("https://api.themoviedb.org/3/search/movie", ({ request }) => {
+      const page = Number(new URL(request.url).searchParams.get("page"));
+      requested.push(page);
+      const genre = actionPages.includes(page) ? 28 : DRAMA;
+      return HttpResponse.json({
+        results: [rawMovie(page * 10, "en", [genre])],
+        page,
+        total_pages: totalPages,
+        total_results: totalPages,
+      });
+    }),
+  );
+  return requested;
 }
 
 async function advancePastFetchDebounce() {
@@ -139,5 +161,34 @@ describe("useMovieResults", () => {
 
     await waitFor(() => expect(result.current.movies.map((m) => m.id)).toEqual([7]));
     expect(result.current.error).toBeNull();
+  });
+
+  it("keeps reading search pages when the filters empty the first ones", async () => {
+    const requested = mockSearchPages(4, [3, 4]);
+    const { result } = renderHook(() => useMovieResults("star", ACTION_GENRE));
+    await advancePastFetchDebounce();
+
+    await waitFor(() => expect(result.current.movies.map((m) => m.id)).toEqual([30]));
+    expect(requested).toEqual([1, 2, 3]);
+    expect(result.current.hasMore).toBe(true);
+
+    act(() => result.current.loadMore());
+    await advancePastFetchDebounce();
+
+    // Carries on after the last page read, rather than re-reading page 2.
+    await waitFor(() => expect(result.current.movies.map((m) => m.id)).toEqual([30, 40]));
+    expect(requested).toEqual([1, 2, 3, 4]);
+    expect(result.current.hasMore).toBe(false);
+  });
+
+  it("stops reading ahead after a few empty search pages", async () => {
+    const requested = mockSearchPages(20, []);
+    const { result } = renderHook(() => useMovieResults("star", ACTION_GENRE));
+    await advancePastFetchDebounce();
+
+    await waitFor(() => expect(result.current.hasSearched).toBe(true));
+    expect(result.current.movies).toEqual([]);
+    expect(requested).toEqual([1, 2, 3, 4, 5]);
+    expect(result.current.hasMore).toBe(true);
   });
 });

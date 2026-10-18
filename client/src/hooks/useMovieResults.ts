@@ -15,6 +15,10 @@ interface UseMovieResultsResult {
   retry: () => void;
 }
 
+// Client-side filters can empty a whole page of search results while later pages
+// still have matches, so a search keeps going this many pages before showing nothing.
+const MAX_SEARCH_PAGES_PER_LOAD = 5;
+
 // TMDB pages can overlap when rankings shift between requests, so a movie on
 // page 3 may already have appeared on page 2.
 function appendNew(existing: Movie[], incoming: Movie[]): Movie[] {
@@ -62,7 +66,10 @@ function applyClientSideFilters(movies: Movie[], filters: DiscoverFilters): Movi
  */
 export function useMovieResults(query: string, filters: DiscoverFilters): UseMovieResultsResult {
   const [movies, setMovies] = useState<Movie[]>([]);
+  // The page a load starts from, and the last page actually fetched (a filtered
+  // search can read ahead several pages in one load).
   const [page, setPage] = useState(1);
+  const [loadedThrough, setLoadedThrough] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
@@ -83,6 +90,7 @@ export function useMovieResults(query: string, filters: DiscoverFilters): UseMov
   if (searchedFor.query !== query || searchedFor.filters !== filters) {
     setSearchedFor({ query, filters });
     setPage(1);
+    setLoadedThrough(0);
   }
 
   useEffect(() => {
@@ -100,10 +108,20 @@ export function useMovieResults(query: string, filters: DiscoverFilters): UseMov
       try {
         let newMovies: Movie[];
         let newTotalPages: number;
+        let lastFetched = page;
 
         if (query) {
-          const response = await searchMovies(query, page, controller.signal);
+          let response = await searchMovies(query, page, controller.signal);
           newMovies = applyClientSideFilters(response.results, filters);
+          while (
+            newMovies.length === 0 &&
+            lastFetched < response.totalPages &&
+            lastFetched - page + 1 < MAX_SEARCH_PAGES_PER_LOAD
+          ) {
+            lastFetched += 1;
+            response = await searchMovies(query, lastFetched, controller.signal);
+            newMovies = applyClientSideFilters(response.results, filters);
+          }
           newTotalPages = response.totalPages;
         } else if (hasAnyFilter(filters)) {
           const response = await discoverMovies({ ...filters, page }, controller.signal);
@@ -120,6 +138,7 @@ export function useMovieResults(query: string, filters: DiscoverFilters): UseMov
 
         setMovies((prev) => (isFirstPage ? newMovies : appendNew(prev, newMovies)));
         setTotalPages(newTotalPages);
+        setLoadedThrough(lastFetched);
         setHasSearched(true);
       } catch (err) {
         if (isAbortError(err)) return;
@@ -142,9 +161,9 @@ export function useMovieResults(query: string, filters: DiscoverFilters): UseMov
     movies,
     isLoading,
     hasSearched,
-    hasMore: page < totalPages,
+    hasMore: Math.max(page, loadedThrough) < totalPages,
     error,
-    loadMore: () => setPage((p) => p + 1),
+    loadMore: () => setPage(Math.max(page, loadedThrough) + 1),
     retry: () => setAttempt((n) => n + 1),
   };
 }
