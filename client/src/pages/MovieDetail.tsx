@@ -44,6 +44,77 @@ function CastList({ cast }: Readonly<{ cast: TmdbCastMember[] }>) {
   );
 }
 
+/** The text shown for each detail line, with fallbacks for anything TMDB leaves out. */
+function describeMovie(movie: TmdbMovieDetails) {
+  return {
+    posterUrl: movie.poster_path ? `${IMAGE_BASE_URL}${movie.poster_path}` : PLACEHOLDER_POSTER,
+    rating: movie.vote_average ? `${movie.vote_average.toFixed(1)} / 10` : "N/A",
+    releaseDate: movie.release_date || "Unknown",
+    releaseYear: movie.release_date ? Number(movie.release_date.slice(0, 4)) : null,
+    runtime: movie.runtime ? `${movie.runtime} min` : "Unknown",
+    genres: movie.genres?.length ? movie.genres.map((g) => g.name).join(", ") : "N/A",
+    cast: movie.credits?.cast ?? [],
+  };
+}
+
+function pageTitleFor(movie: TmdbMovieDetails | null, error: string | null): string | null {
+  if (error) {
+    return error === MOVIE_NOT_FOUND ? "Movie not found" : "Couldn't load movie";
+  }
+  if (movie) {
+    return movie.release_date ? `${movie.title} (${movie.release_date.slice(0, 4)})` : movie.title;
+  }
+  return null;
+}
+
+function LoadingState() {
+  return (
+    <div className="page-container">
+      <div className="loading-container">
+        <div className="loading-spinner">
+          <div className="loading-ring" />
+        </div>
+        <p className="loading-text">
+          Loading movie details <span className="loading-dots" />
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ErrorState({ error, onBack }: Readonly<{ error: string | null; onBack: () => void }>) {
+  const isNotFound = !error || error === MOVIE_NOT_FOUND;
+  return (
+    <div className="page-container">
+      <div className="error-container">
+        <span className="error-icon">🎥</span>
+
+        <h1 className="error-title">
+          {isNotFound ? "404" : "Oops!"}
+        </h1>
+
+        <p className="error-message">{error || "Movie not found"}</p>
+
+        <p className="error-hint">
+          {isNotFound ? (
+            <>
+              The film you're looking for might have been moved, deleted,
+              <br />
+              or never existed 💀
+            </>
+          ) : (
+            "Check your connection and try again."
+          )}
+        </p>
+
+        <button type="button" onClick={onBack} className="error-back-button">
+          <span className="arrow">←</span> Back to Search
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function MovieDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -63,14 +134,10 @@ export default function MovieDetail() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  let pageTitle: string | null = null;
-  if (movie && !loading) {
-    pageTitle = movie.release_date ? `${movie.title} (${movie.release_date.slice(0, 4)})` : movie.title;
-  } else if (error) {
-    pageTitle = error === MOVIE_NOT_FOUND ? "Movie not found" : "Couldn't load movie";
-  }
-  useDocumentTitle(pageTitle);
-  useRecordView(movie && !loading ? movie.id : null);
+  // After a failed load, `movie` can still hold the previous movie; it isn't on screen.
+  const shownMovie = loading || error ? null : movie;
+  useDocumentTitle(loading ? null : pageTitleFor(shownMovie, error));
+  useRecordView(shownMovie?.id ?? null);
 
   useEffect(() => {
     if (!id) {
@@ -109,94 +176,15 @@ export default function MovieDetail() {
     return () => controller.abort();
   }, [id]);
 
-  //loading section
   if (loading) {
-    return (
-      <div className="page-container">
-        <div className="loading-container">
-          <div className="loading-spinner">
-            <div className="loading-ring" />
-          </div>
-          <p className="loading-text">
-            Loading movie details <span className="loading-dots" />
-          </p>
-        </div>
-      </div>
-    );
+    return <LoadingState />;
   }
 
-  //Error page section
   if (error || !movie) {
-    const isNotFound = !error || error === MOVIE_NOT_FOUND;
-    return (
-      <div className="page-container">
-        <div className="error-container">
-          <span className="error-icon">🎥</span>
-
-          <h1 className="error-title">
-            {isNotFound ? "404" : "Oops!"}
-          </h1>
-
-          <p className="error-message">{error || "Movie not found"}</p>
-
-          <p className="error-hint">
-            {isNotFound ? (
-              <>
-                The film you're looking for might have been moved, deleted,
-                <br />
-                or never existed 💀
-              </>
-            ) : (
-              "Check your connection and try again."
-            )}
-          </p>
-
-          <button
-            type="button"
-            onClick={() => void navigate("/")}
-            className="error-back-button"
-          >
-            <span className="arrow">←</span> Back to Search
-          </button>
-        </div>
-      </div>
-    );
+    return <ErrorState error={error} onBack={() => void navigate("/")} />;
   }
 
-  // Format the runtime
-  let formattedRuntime = "Unknown";
-  if (movie.runtime) {
-    formattedRuntime = `${movie.runtime} min`;
-  }
-
-  // Format the release date
-  let formattedReleaseDate = "Unknown";
-  let releaseYear: number | null = null;
-  if (movie.release_date) {
-    formattedReleaseDate = movie.release_date;
-    releaseYear = Number(movie.release_date.slice(0, 4));
-  }
-
-  // Format the genres
-  let genreNames = "N/A";
-  if (movie.genres && movie.genres.length > 0) {
-    genreNames = movie.genres.map((g) => g.name).join(", ");
-  }
-
-  let posterUrl = PLACEHOLDER_POSTER;
-  if (movie.poster_path) {
-    posterUrl = `${IMAGE_BASE_URL}${movie.poster_path}`;
-  }
-
-  let voteAverageDisplay = "N/A";
-  if (movie.vote_average) {
-    voteAverageDisplay = `${movie.vote_average.toFixed(1)} / 10`;
-  }
-
-  let castData: TmdbCastMember[] = [];
-  if (movie.credits?.cast) {
-    castData = movie.credits.cast;
-  }
+  const details = describeMovie(movie);
 
   //Movie page section
   return (
@@ -206,35 +194,35 @@ export default function MovieDetail() {
       </button>
 
       <div className="movie-layout">
-        <img src={posterUrl} alt={movie.title} className="movie-poster" />
+        <img src={details.posterUrl} alt={movie.title} className="movie-poster" />
 
         <div className="movie-info">
           <h1 className="movie-title">{movie.title}</h1>
           <p>
-            <strong>Rating:</strong> {voteAverageDisplay}
+            <strong>Rating:</strong> {details.rating}
           </p>
           <p>
-            <strong>Release:</strong> {formattedReleaseDate}
+            <strong>Release:</strong> {details.releaseDate}
           </p>
           <p>
-            <strong>Runtime:</strong> {formattedRuntime}
+            <strong>Runtime:</strong> {details.runtime}
           </p>
           <p>
-            <strong>Genres:</strong> {genreNames}
+            <strong>Genres:</strong> {details.genres}
           </p>
 
           <h3>Overview</h3>
           <p>{movie.overview || "No overview available."}</p>
 
           <h3>Cast</h3>
-          <CastList cast={castData} />
+          <CastList cast={details.cast} />
         </div>
       </div>
       <h3>Recommendations</h3>
       <MovieRecommendations movieId={movie.id} />
 
       <h3>Related Movies Graph</h3>
-      <MovieGraph movieId={movie.id} title={movie.title} year={releaseYear} />
+      <MovieGraph movieId={movie.id} title={movie.title} year={details.releaseYear} />
 
       <h3>Review from User</h3>
       <ReviewsList movieId={movie.id} />

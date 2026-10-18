@@ -14,7 +14,9 @@
           var saved = localStorage.getItem("theme");
           var systemLight = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
           if (saved === "light" || (saved === "system" && systemLight)) theme = "light";
-        } catch (e) {}
+        } catch (e) {
+          // Storage can be blocked (private mode, site data off); keep the dark default.
+        }
         document.documentElement.dataset.theme = theme;
       })();
     </script>

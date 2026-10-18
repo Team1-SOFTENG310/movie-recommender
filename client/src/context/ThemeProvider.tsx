@@ -11,7 +11,7 @@ import {
 import { ThemeContext, type ThemeContextValue } from "./ThemeContext";
 
 export function ThemeProvider({ children }: Readonly<{ children: ReactNode }>) {
-  const [preference, setPreferenceState] = useState<ThemePreference>(() => readStoredTheme());
+  const [preference, setPreference] = useState<ThemePreference>(() => readStoredTheme());
   const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(() => resolveTheme("system"));
 
   const resolvedTheme = preference === "system" ? systemTheme : preference;
@@ -44,7 +44,7 @@ export function ThemeProvider({ children }: Readonly<{ children: ReactNode }>) {
         writeStoredTheme(next);
         applyTheme(next === "system" ? systemTheme : next);
         preferenceRef.current = next;
-        setPreferenceState(next);
+        setPreference(next);
       },
     }),
     [preference, resolvedTheme, systemTheme],

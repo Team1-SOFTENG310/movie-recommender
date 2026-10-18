@@ -10,13 +10,13 @@ export interface AuthDeps {
 
 export function createAuthRouter(config: Pick<AppConfig, "isProduction">, deps: AuthDeps): Router {
   const router = Router();
-  const { signUp, logIn, logOut, getCurrentUser } = createAuthController(config);
+  const { signUp, logIn, logOut, getSession } = createAuthController(config);
   const requireDatabase = createRequireDatabase(deps.isDatabaseReady);
 
   router.post("/signup", requireDatabase, signUp);
   router.post("/login", requireDatabase, logIn);
   router.post("/logout", logOut);
-  router.get("/me", requireDatabase, getCurrentUser);
+  router.get("/me", requireDatabase, getSession);
 
   return router;
 }

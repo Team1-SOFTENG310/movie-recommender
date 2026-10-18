@@ -350,15 +350,15 @@ export default function MovieGraph({ movieId, title, year }: Readonly<Props>) {
         <ul className="movie-graph__legend" aria-label="Graph key">
           <li>
             <span className="movie-graph__swatch movie-graph__swatch--root" aria-hidden="true" />
-            This movie
+            <span>This movie</span>
           </li>
           <li>
             <span className="movie-graph__swatch movie-graph__swatch--direct" aria-hidden="true" />
-            Recommended for this movie
+            <span>Recommended for this movie</span>
           </li>
           <li>
             <span className="movie-graph__swatch movie-graph__swatch--indirect" aria-hidden="true" />
-            Related through another movie
+            <span>Related through another movie</span>
           </li>
         </ul>
         <p className="movie-graph__status" aria-live="polite">
@@ -401,12 +401,13 @@ export default function MovieGraph({ movieId, title, year }: Readonly<Props>) {
           />
         )}
         {showScrollHint && (
-          <p className="movie-graph__scroll-hint" role="status">
+          <output className="movie-graph__scroll-hint">
             Use {IS_MAC ? "⌘" : "Ctrl"} + scroll to zoom
-          </p>
+          </output>
         )}
         <AiRecommendationPanel movieId={movieId} title={title} year={year} />
-        <div className="movie-graph__zoom" role="group" aria-label="Zoom">
+        <fieldset className="movie-graph__zoom">
+          <legend className="visually-hidden">Zoom</legend>
           <button type="button" onClick={() => zoomBy(ZOOM_STEP)} aria-label="Zoom in" title="Zoom in">
             +
           </button>
@@ -428,7 +429,7 @@ export default function MovieGraph({ movieId, title, year }: Readonly<Props>) {
               />
             </svg>
           </button>
-        </div>
+        </fieldset>
       </div>
 
       <p className="movie-graph__hint">
