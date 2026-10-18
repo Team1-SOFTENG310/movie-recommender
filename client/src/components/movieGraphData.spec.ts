@@ -102,15 +102,13 @@ describe("addRelatedMovies", () => {
   });
 
   it("reads link ends that the force layout has replaced with node objects", () => {
+    const rootNode = { id: 1, title: "Root Movie", year: 1999, depth: 0 };
+    const nodeA = { id: 2, title: "A", year: 2020, depth: 1 };
     const laidOut: MovieGraphData = {
-      nodes: [
-        { id: 1, title: "Root Movie", year: 1999, depth: 0 },
-        { id: 2, title: "A", year: 2020, depth: 1 },
-      ],
-      links: [],
+      nodes: [rootNode, nodeA],
+      // The force layout swaps ids for the node objects themselves once it renders.
+      links: [{ source: rootNode, target: nodeA }],
     };
-    // The force layout swaps ids for the node objects themselves once it renders.
-    laidOut.links.push({ source: laidOut.nodes[0], target: laidOut.nodes[1] });
 
     const graph = addRelatedMovies(laidOut, 1, [movie(2, "A")], 8);
 

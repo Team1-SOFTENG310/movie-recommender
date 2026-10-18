@@ -1,0 +1,83 @@
+.profile-page {
+  width: 100%;
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.profile-page > a {
+  color: #c8a96e;
+}
+
+.profile-page h1 {
+  margin: 1.5rem 0;
+  font-family: var(--font-display);
+  font-size: 2rem;
+}
+
+.profile-card {
+  margin-bottom: 1.5rem;
+  padding: 1.5rem;
+  background-color: #16151a;
+  border: 1px solid #2a2830;
+  border-radius: 1rem;
+}
+
+.profile-card h2 {
+  margin: 0 0 1rem;
+  font-size: 1.25rem;
+}
+
+.profile-details {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+}
+
+.profile-details dt {
+  margin-bottom: 0.25rem;
+  color: #b8b2bf;
+  font-size: 0.875rem;
+}
+
+.profile-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.profile-page > a:focus-visible {
+  outline: 2px solid #c8a96e;
+  outline-offset: 3px;
+}
+
+.profile-logout {
+  display: block;
+  width: 100%;
+  margin-top: 2rem;
+  padding: 1rem;
+  border: 1px solid #c8a96e;
+  border-radius: 0.75rem;
+  background-color: #c8a96e;
+  color: #0c0c0f;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.profile-logout:hover:not(:disabled) {
+  background-color: #dbc08d;
+}
+
+.profile-logout:focus-visible {
+  outline: 2px solid #c8a96e;
+  outline-offset: 3px;
+}
+
+.profile-logout:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.profile-error {
+  color: #ffb4ab;
+}

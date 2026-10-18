@@ -1,14 +1,8 @@
 import { useState } from "react";
-
-interface Review {
-  id: string;
-  author: string;
-  content: string;
-  author_details: {rating: number | null};
-}
+import type { TmdbReview } from "../types/tmdb";
 
 interface Props {
-  review: Review;
+  review: TmdbReview;
 }
 
 export default function ReviewCard({ review }: Readonly<Props>) {

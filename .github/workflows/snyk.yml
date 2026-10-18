@@ -1,0 +1,48 @@
+name: Snyk Security Scan
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  snyk:
+    runs-on: ubuntu-latest
+
+    # Secrets can't be used in step `if:` conditions, so expose it as an env var.
+    # Without the SNYK_TOKEN repository secret the scan is skipped instead of failing.
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Pinned release binary, checked against its published SHA-256 before use.
+      # To upgrade, take both values from https://github.com/snyk/cli/releases
+      - name: Install Snyk CLI
+        if: env.SNYK_TOKEN != ''
+        env:
+          SNYK_VERSION: 1.1307.4
+          SNYK_SHA256: b0baee4fa4d7d11b7df927a1046cf8137a8a89fafac8101a45c3c0e0777ddc35
+        run: |
+          curl --proto '=https' --tlsv1.2 -fsSL -o snyk "https://static.snyk.io/cli/v${SNYK_VERSION}/snyk-linux"
+          echo "${SNYK_SHA256}  snyk" | sha256sum --check --strict
+          sudo install -m 0755 snyk /usr/local/bin/snyk
+          rm snyk
+
+      # Scans the root, client and server package-lock.json files.
+      # Fails the check on high or critical vulnerabilities.
+      - name: Test dependencies for vulnerabilities
+        if: env.SNYK_TOKEN != ''
+        run: snyk test --all-projects --severity-threshold=high
+
+      # On main, upload a snapshot (even if the test step failed) so the Snyk dashboard stays current.
+      - name: Monitor main branch
+        if: ${{ !cancelled() && env.SNYK_TOKEN != '' && github.event_name == 'push' }}
+        run: snyk monitor --all-projects
+
+      - name: Skip notice
+        if: env.SNYK_TOKEN == ''
+        run: echo "::warning::SNYK_TOKEN secret is not set, so the Snyk scan was skipped."

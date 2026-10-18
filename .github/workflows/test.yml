@@ -31,9 +31,25 @@ jobs:
         working-directory: ./client
         run: npm ci --ignore-scripts
 
+      - name: Typecheck Backend
+        working-directory: ./server
+        run: npm run typecheck
+
+      - name: Build Backend
+        working-directory: ./server
+        run: npm run build
+
       - name: Run Backend Tests
         working-directory: ./server
         run: npm run test
+
+      - name: Typecheck Frontend
+        working-directory: ./client
+        run: npm run typecheck
+
+      - name: Lint Frontend
+        working-directory: ./client
+        run: npm run lint
 
       - name: Run Frontend Tests
         working-directory: ./client

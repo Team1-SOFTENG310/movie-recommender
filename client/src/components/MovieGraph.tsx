@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ForceGraph2D, { type ForceGraphMethods } from "react-force-graph-2d";
 import { fetchRecommendedMovies } from "../api/recommendedMovies";
+import { isAbortError } from "../api/tmdb";
 import {
   addRelatedMovies,
   createGraph,
@@ -10,6 +11,7 @@ import {
   type MovieGraphLink,
   type MovieGraphNode,
 } from "./movieGraphData";
+import AiRecommendationPanel from "./AiRecommendations/AiRecommendationPanel";
 import "./MovieGraph.css";
 
 const GRAPH_HEIGHT = 600;
@@ -119,8 +121,8 @@ export default function MovieGraph({ movieId, title, year }: Readonly<Props>) {
                 setLoadingId(null);
                 shouldRefitRef.current = true;
 
-            }).catch((err: Error) => {
-                if (err.name === "AbortError") {
+            }).catch((err: unknown) => {
+                if (isAbortError(err)) {
                 return;
                 }
                 setError("Could not load related movies.");
@@ -228,13 +230,14 @@ export default function MovieGraph({ movieId, title, year }: Readonly<Props>) {
             linkColor={() => LINK_COLOR}
             linkWidth={1}
             onNodeClick={(node) => {
-                if (Number(node.id) !== movieId) { // do nothing if clicked center node
-                    navigate(`/movie/${node.id}`)
+                if (node.id !== movieId) { // do nothing if clicked center node
+                    void navigate(`/movie/${node.id}`)
                 }
             }}
             onEngineStop={handleEngineStop}
           />
         )}
+        <AiRecommendationPanel movieId={movieId} title={title} year={year} />
       </div>
       <p className="movie-graph__status" aria-live="polite"> 
         {status}

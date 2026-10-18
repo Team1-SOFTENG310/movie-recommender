@@ -1,41 +1,41 @@
 import { useEffect, useState } from "react";
 import "./ReviewsList.css";
 import ReviewCard from "./ReviewCard";
-
-interface Review {
-  id: string;
-  author: string;
-  content: string;
-  author_details: {rating: number | null};
-}
+import { fetchMovieReviews } from "../api/movieReviews";
+import { isAbortError } from "../api/tmdb";
+import type { TmdbReview } from "../types/tmdb";
 
 interface Props {
   movieId: number;
 }
 
 export default function ReviewsList({ movieId }: Readonly<Props>) {
-  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviews, setReviews] = useState<TmdbReview[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [visibleCount, setVisibleCount] = useState(1);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchReviews = async () => {
       setLoading(true);
       try {
-        const url = `https://api.themoviedb.org/3/movie/${movieId}/reviews?api_key=${
-          import.meta.env.VITE_TMDB_API_KEY
-        }`;
-        const response = await fetch(url);
-        const data = await response.json();
-        setReviews(data.results ?? []);
-      } catch {
+        setReviews(await fetchMovieReviews(movieId, controller.signal));
+      } catch (err) {
+        if (isAbortError(err)) {
+          return;
+        }
         setReviews([]);
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     };
 
-    fetchReviews();
+    void fetchReviews();
+
+    return () => controller.abort();
   }, [movieId]);
 
   if (loading) {

@@ -179,4 +179,10 @@ export const handlers = [
       total_results: 6,
     });
   }),
+  http.get(`${import.meta.env.VITE_API_URL || "http://localhost:5000/api"}/auth/me`, () => {
+    return HttpResponse.json(
+      { message: "Not authenticated" },
+      { status: 401 },
+    );
+  }),
 ];

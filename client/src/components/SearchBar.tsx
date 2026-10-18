@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { SEARCH_INPUT_DEBOUNCE_MS } from "../constants/debounce";
 import "./SearchBar.css";
 
 interface SearchBarProps {
@@ -13,7 +14,7 @@ export default function SearchBar({
   onQueryChange,
   isLoading = false,
   placeholder = "e.g. Blade Runner, Mulholland Drive…",
-  debounceMs = 400,
+  debounceMs = SEARCH_INPUT_DEBOUNCE_MS,
   initialValue = "",
 }: Readonly<SearchBarProps>) {
   const [inputValue, setInputValue] = useState(initialValue);

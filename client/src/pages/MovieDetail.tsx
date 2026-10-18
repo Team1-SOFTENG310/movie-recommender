@@ -5,34 +5,17 @@ import "./MovieDetail.css";
 import MovieRecommendations from "../components/MovieRecommendations";
 import MovieGraph from "../components/MovieGraph";
 import ReviewsList from "../components/ReviewsList";
+import { fetchMovieDetails } from "../api/movieDetails";
+import { isAbortError } from "../api/tmdb";
+import type { TmdbCastMember, TmdbMovieDetails } from "../types/tmdb";
 
-const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500";
 const CAST_IMAGE_BASE = "https://image.tmdb.org/t/p/w200";
 const PLACEHOLDER_POSTER = "https://via.placeholder.com/300x450?text=No+Poster";
 const PLACEHOLDER_AVATAR = "https://via.placeholder.com/80x120?text=No+Image";
 const MAX_CAST_TO_SHOW = 5;
 
-interface CastMember {
-  id: number;
-  name: string;
-  character: string;
-  profile_path: string | null;
-}
-
-interface MovieDetail {
-  id: number;
-  title: string;
-  overview: string;
-  poster_path: string | null;
-  release_date: string;
-  runtime: number | null;
-  vote_average: number;
-  genres: { id: number; name: string }[];
-  credits: { cast: CastMember[] };
-}
-
-function CastList({ cast }: Readonly<{ cast: CastMember[] }>) {
+function CastList({ cast }: Readonly<{ cast: TmdbCastMember[] }>) {
   const topCast = cast.slice(0, MAX_CAST_TO_SHOW);
 
   if (topCast.length === 0) {
@@ -64,7 +47,7 @@ export default function MovieDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const [movie, setMovie] = useState<MovieDetail | null>(null);
+  const [movie, setMovie] = useState<TmdbMovieDetails | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,28 +56,31 @@ export default function MovieDetail() {
       return;
     }
 
+    // Aborted when the id changes or the page unmounts, so a slow response
+    // for the previous movie can't overwrite the current one.
+    const controller = new AbortController();
+
     const fetchMovie = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        const url = `https://api.themoviedb.org/3/movie/${id}?api_key=${TMDB_API_KEY}&append_to_response=credits`;
-        const response = await fetch(url);
-
-        if (!response.ok) {
-          throw new Error("Movie not found");
-        }
-
-        const data: MovieDetail = await response.json();
-        setMovie(data);
+        setMovie(await fetchMovieDetails(id, controller.signal));
       } catch (err) {
-        setError((err as Error).message);
+        if (isAbortError(err)) {
+          return;
+        }
+        setError(err instanceof Error ? err.message : "Movie not found");
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     };
 
-    fetchMovie();
+    void fetchMovie();
+
+    return () => controller.abort();
   }, [id]);
 
   //loading section
@@ -134,7 +120,7 @@ export default function MovieDetail() {
 
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={() => void navigate(-1)}
             className="error-back-button"
           >
             <span className="arrow">←</span> Back to Search
@@ -174,7 +160,7 @@ export default function MovieDetail() {
     voteAverageDisplay = `${movie.vote_average.toFixed(1)} / 10`;
   }
 
-  let castData: CastMember[] = [];
+  let castData: TmdbCastMember[] = [];
   if (movie.credits?.cast) {
     castData = movie.credits.cast;
   }
@@ -184,7 +170,7 @@ export default function MovieDetail() {
     <div className="page-container">
       <button
         type="button"
-        onClick={() => navigate(-1)}
+        onClick={() => void navigate(-1)}
         className="back-button"
       >
         ← Back to Search

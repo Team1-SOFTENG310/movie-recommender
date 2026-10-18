@@ -1,11 +1,12 @@
-import { render, screen } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { render, screen, waitFor } from "@testing-library/react";
+import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
 import MovieDetail from "./MovieDetail";
 import { server } from "../test/server";
 import { http, HttpResponse } from "msw";
 import App from "../App";
 import userEvent from "@testing-library/user-event";
 import LocationDisplay from "../test/LocationDisplay";
+import { AuthProvider } from "../context/AuthProvider";
 
 describe("MovieDetail", () => {
   afterEach(() => {
@@ -125,13 +126,15 @@ describe("MovieDetail", () => {
     const user = userEvent.setup();
 
     render(
-      <MemoryRouter initialEntries={["/", "/movie/574475"]} initialIndex={1}>
-        <LocationDisplay/>
-        <Routes>
-          <Route path="/" element={<App />} />
-          <Route path="/movie/:id" element={<MovieDetail />} />
-        </Routes>
-      </MemoryRouter>,
+      <AuthProvider>
+        <MemoryRouter initialEntries={["/", "/movie/574475"]} initialIndex={1}>
+          <LocationDisplay/>
+          <Routes>
+            <Route path="/" element={<App />} />
+            <Route path="/movie/:id" element={<MovieDetail />} />
+          </Routes>
+        </MemoryRouter>,
+      </AuthProvider>
     );
 
     await screen.findByText("Final Destination Bloodlines");
@@ -140,5 +143,58 @@ describe("MovieDetail", () => {
 
     // confirms page is exactly on root
     expect(screen.getByTestId("location-display").textContent).toBe("/");
+  });
+
+  // Test 8: a slow response for the previous movie doesn't replace the current one
+  it("ignores a late response for a movie the user has navigated away from", async () => {
+    const user = userEvent.setup();
+    let releaseSlowMovie: () => void = () => {};
+    const slowMovieGate = new Promise<void>((resolve) => {
+      releaseSlowMovie = resolve;
+    });
+    let slowMovieRequested = false;
+
+    const details = (id: number, title: string) => ({
+      id,
+      title,
+      overview: "",
+      poster_path: null,
+      release_date: "2000-01-01",
+      runtime: 100,
+      vote_average: 7,
+      genres: [],
+      credits: { cast: [] },
+    });
+
+    server.use(
+      http.get("https://api.themoviedb.org/3/movie/:id", async ({ params }) => {
+        if (params.id === "1") {
+          slowMovieRequested = true;
+          await slowMovieGate;
+          return HttpResponse.json(details(1, "Slow Movie"));
+        }
+        return HttpResponse.json(details(2, "Fast Movie"));
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/movie/1"]}>
+        <Link to="/movie/2">Open movie 2</Link>
+        <Routes>
+          <Route path="/movie/:id" element={<MovieDetail />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(slowMovieRequested).toBe(true));
+    await user.click(screen.getByText("Open movie 2"));
+    expect(await screen.findByRole("heading", { name: "Fast Movie" })).toBeInTheDocument();
+
+    // Let movie 1's response arrive late, then give React a chance to apply it.
+    releaseSlowMovie();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(screen.getByRole("heading", { name: "Fast Movie" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Slow Movie" })).not.toBeInTheDocument();
   });
 });

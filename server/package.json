@@ -2,23 +2,35 @@
   "name": "server",
   "version": "1.0.0",
   "description": "Express/MongoDB backend",
-  "main": "index.js",
+  "main": "dist/index.js",
   "type": "module",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
-    "test": "vitest run"
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:db": "tsx --test test/db.integration.ts"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "connect-mongo": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
-    "express": "^4.19.2",
+    "express": "^4.22.3",
+    "express-session": "^1.19.0",
     "mongoose": "^8.5.1",
-    "movie-recommender": "file:.."
+    "openai": "^7.23.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.4",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^4.17.25",
+    "@types/express-session": "^1.19.0",
+    "@types/node": "^26.6.5",
+    "@types/supertest": "^7.2.1",
     "supertest": "^7.2.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   }
 }

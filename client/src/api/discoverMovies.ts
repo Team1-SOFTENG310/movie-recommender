@@ -1,94 +1,60 @@
-import type { Movie, SearchMoviesResponse } from "../types/movie";
+import type { SearchMoviesResponse } from "../types/movie";
+import type { TmdbMovieResult, TmdbPage } from "../types/tmdb";
+import { normalizeMovie, tmdbGet } from "./tmdb";
 
-const API_BASE_URL = "https://api.themoviedb.org/3";
-const IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w342";
-
-// Raw shape returned by TMDB, kept separate from our normalized Movie type
-// so a TMDB API change doesn't ripple through every component that uses Movie.
-interface RawMovieResult {
-  id: number;
-  title: string;
-  release_date: string | null;
-  poster_path: string | null;
-  overview: string | null;
-  genre_ids: number[] | null;
-  vote_average: number | null;
-}
-
-interface RawDiscoverResponse {
-  page: number;
-  results: RawMovieResult[];
-  total_pages: number;
-  total_results: number;
-}
-
-function normalizeMovie(raw: RawMovieResult): Movie {
-  return {
-    id: raw.id,
-    title: raw.title,
-    year: raw.release_date ? Number(raw.release_date.slice(0, 4)) : null,
-    posterUrl: raw.poster_path ? `${IMAGE_BASE_URL}${raw.poster_path}` : null,
-    overview: raw.overview ?? "",
-    genreIds: raw.genre_ids ?? [],
-    voteAverage: raw.vote_average ?? null,
-  };
-}
+export type SortOption = "rating" | "release_date" | "popularity";
 
 export interface DiscoverFilters {
   genre?: number;
   yearFrom?: number;
   yearTo?: number;
+  language?: string;
   ratingMin?: number;
   // TMDB person ID, not a name. See searchPerson.ts, which resolves a
   // typed actor name to this ID before it ever reaches discoverMovies.
   castId?: number;
-  sort?: "rating" | "release_date" | "popularity";
+  sort?: SortOption;
   page?: number;
 }
 
 // Maps our UI-friendly sort names to the exact string TMDB's API expects.
-const SORT_MAP: Record<NonNullable<DiscoverFilters["sort"]>, string> = {
+const SORT_MAP: Record<SortOption, string> = {
   rating: "vote_average.desc",
   release_date: "primary_release_date.desc",
   popularity: "popularity.desc",
 };
 
+/** Narrows an untrusted value (e.g. a <select> value or stored JSON) to a SortOption. */
+export function isSortOption(value: unknown): value is SortOption {
+  return typeof value === "string" && Object.hasOwn(SORT_MAP, value);
+}
+
 export async function discoverMovies(
   filters: DiscoverFilters,
   signal?: AbortSignal,
 ): Promise<SearchMoviesResponse> {
-  // Read the key inside the function (not at module scope) so tests can
-  // stub VITE_TMDB_API_KEY via vi.stubEnv before this ever runs.
-  const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
-  if (!API_KEY) {
-    throw new Error(
-      "Missing VITE_TMDB_API_KEY (set it in .env as VITE_TMDB_API_KEY=... and restart Vite).",
-    );
-  }
-
-  const url = new URL(`${API_BASE_URL}/discover/movie`);
-  url.searchParams.set("api_key", API_KEY);
-  url.searchParams.set("include_adult", "false");
-  url.searchParams.set("sort_by", SORT_MAP[filters.sort ?? "popularity"]);
+  const params: Record<string, string> = {
+    include_adult: "false",
+    sort_by: SORT_MAP[filters.sort ?? "popularity"],
+  };
 
   // Each filter is only added if set, so an empty FilterPanel produces an
   // unfiltered "popular movies" query rather than an impossible one.
-  if (filters.genre) {url.searchParams.set("with_genres", String(filters.genre))};
+  if (filters.genre) {params.with_genres = String(filters.genre)};
   // TMDB has no "year range" param, so a from/to range is built as two
   // separate date-boundary filters spanning Jan 1 to Dec 31 of each year.
-  if (filters.yearFrom) {url.searchParams.set("primary_release_date.gte", `${filters.yearFrom}-01-01`)};
-  if (filters.yearTo) {url.searchParams.set("primary_release_date.lte", `${filters.yearTo}-12-31`)};
-  if (filters.ratingMin) {url.searchParams.set("vote_average.gte", String(filters.ratingMin))};
-  if (filters.castId) {url.searchParams.set("with_cast", String(filters.castId))};
-  if (filters.page) {url.searchParams.set("page", String(filters.page))};
+  if (filters.yearFrom) {params["primary_release_date.gte"] = `${filters.yearFrom}-01-01`};
+  if (filters.yearTo) {params["primary_release_date.lte"] = `${filters.yearTo}-12-31`};
+  if (filters.language) {params["with_original_language"] = filters.language};
+  if (filters.ratingMin) {params["vote_average.gte"] = String(filters.ratingMin)};
+  if (filters.castId) {params.with_cast = String(filters.castId)};
+  if (filters.page) {params.page = String(filters.page)};
 
-  const response = await fetch(url.toString(), { signal });
-
-  if (!response.ok) {
-    throw new Error(`Discover failed with status ${response.status}`);
-  }
-
-  const data: RawDiscoverResponse = await response.json();
+  const data = await tmdbGet<TmdbPage<TmdbMovieResult>>("/discover/movie", {
+    params,
+    signal,
+    failureMessage: (status) => `Discover failed with status ${status}`,
+  });
 
   return {
     results: data.results.map(normalizeMovie),

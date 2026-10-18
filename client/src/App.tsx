@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import "./App.css";
 import SearchBar from "./components/SearchBar.tsx";
 import SearchResultsList from "./components/SearchResultsList.tsx";
@@ -8,8 +8,36 @@ import { useMovieResults } from "./hooks/useMovieResults.ts";
 import type { Movie } from "./types/movie.ts";
 import type { DiscoverFilters } from "./api/discoverMovies";
 import RandomButton from "./components/RandomButton.tsx";
+import { CURRENT_YEAR, MIN_YEAR } from "./constants/filters";
+import { writeStoredFilters, writeStoredQuery } from "./utils/searchStorage";
+import { useAuth } from "./hooks/useAuth.ts";
 
 function App() {
+  const { user, isLoading: isAuthLoading, logout } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+
+  async function handleLogout() {
+    if (isLoggingOut) {
+      return;
+    }
+
+    setLogoutError(null);
+    setIsLoggingOut(true);
+
+    try {
+      await logout();
+    } catch (error: unknown) {
+      setLogoutError(
+        error instanceof Error
+          ? error.message
+          : "Unable to log out. Please try again.",
+      );
+    } finally {
+      setIsLoggingOut(false);
+    }
+  }
+
   const [showFilters, setShowFilters] = useState(false);
   const navigate = useNavigate();
 
@@ -20,7 +48,7 @@ function App() {
     }
 
     try {
-      const parsed = JSON.parse(savedQuery);
+      const parsed = JSON.parse(savedQuery) as unknown;
 
       if (typeof parsed === "string" && /^[^<>]*$/.test(parsed)) {
         return parsed;
@@ -38,7 +66,7 @@ function App() {
     }
 
     try {
-      const parsed = JSON.parse(savedFilters);
+      const parsed = JSON.parse(savedFilters) as Record<string, unknown>;
       const safeFilters: DiscoverFilters = {};
 
       if (typeof parsed.genre === "number") {
@@ -50,6 +78,9 @@ function App() {
       if (typeof parsed.yearTo === "number") {
         safeFilters.yearTo = parsed.yearTo;
       }
+      if (typeof parsed.language === "string") {
+        safeFilters.language = parsed.language;
+      }
       if (typeof parsed.ratingMin === "number") {
         safeFilters.ratingMin = parsed.ratingMin;
       }
@@ -57,8 +88,8 @@ function App() {
         safeFilters.castId = parsed.castId;
       }
 
-      if (["popularity", "rating", "release_date"].includes(parsed.sort)) {
-        safeFilters.sort = parsed.sort;
+      if (typeof parsed.sort === "string" && ["popularity", "rating", "release_date"].includes(parsed.sort)) {
+        safeFilters.sort = parsed.sort as DiscoverFilters["sort"];
       }
 
       return safeFilters;
@@ -73,29 +104,66 @@ function App() {
   );
 
   useEffect(() => {
-    if (/^[^<>]*$/.test(query)) {
-      sessionStorage.setItem("movieSearchQuery", JSON.stringify(query));
-    }
+    writeStoredQuery(query);
   }, [query]);
 
   useEffect(() => {
-    sessionStorage.setItem("movieSearchFilters", JSON.stringify(filters));
+    writeStoredFilters(filters);
   }, [filters]);
 
   const handleMovieClick = (movie: Movie) => {
-    navigate(`/movie/${movie.id}`);
+    void navigate(`/movie/${movie.id}`);
   };
 
   const hasActiveFilters =
     filters.genre !== undefined ||
     filters.ratingMin !== undefined ||
     filters.castId !== undefined ||
-    (filters.yearFrom !== undefined && filters.yearFrom !== 1900) ||
-    (filters.yearTo !== undefined &&
-      filters.yearTo !== new Date().getFullYear());
+    (filters.yearFrom !== undefined && filters.yearFrom !== MIN_YEAR) ||
+    (filters.yearTo !== undefined && filters.yearTo !== CURRENT_YEAR);
+  let accountActions;
+
+  if (isAuthLoading) {
+    accountActions = <output>Checking your session…</output>;
+  } else if (user) {
+    accountActions = (
+      <>
+        <span>Hello, {user.username}</span>
+        <Link to="/profile" className="account-link">
+          Profile
+        </Link>
+        <button
+          type="button"
+          className="account-link"
+          onClick={() => void handleLogout()}
+          disabled={isLoggingOut}
+        >
+          {isLoggingOut ? "Logging out…" : "Log out"}
+        </button>
+      </>
+    );
+  } else {
+    accountActions = (
+      <>
+        <Link to="/login" className="account-link">
+          Log in
+        </Link>
+
+        <Link to="/signup" className="account-link">
+          Register
+        </Link>
+      </>
+    );
+  }
 
   return (
     <section id="search-page">
+      <div className="account-actions">{accountActions}</div>
+      {logoutError && (
+        <p className="account-error" role="alert">
+          {logoutError}
+        </p>
+      )}
       <SearchBar
         onQueryChange={setQuery}
         isLoading={isLoading}
@@ -108,16 +176,38 @@ function App() {
         onClick={() => setShowFilters((v) => !v)}
         aria-expanded={showFilters}
       >
-        <span
+        <svg
           className="filter-toggle__icon"
-          style={{ transform: showFilters ? "rotate(180deg)" : "rotate(0deg)" }}
+          width="16"
+          height="16"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={1.75}
+          aria-hidden="true"
         >
-          ▾
-        </span>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75"
+          />
+        </svg>
         Filters
         {hasActiveFilters && (
           <span className="filter-toggle__dot" aria-label="Filters active" />
         )}
+        <svg
+          className="filter-toggle__chevron"
+          width="14"
+          height="14"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+          aria-hidden="true"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+        </svg>
       </button>
 
       <div
@@ -126,6 +216,7 @@ function App() {
         <FilterPanel
           onFiltersChange={setFilters}
           searchActive={query.length > 0}
+          initialFilters={filters}
         />
       </div>
 

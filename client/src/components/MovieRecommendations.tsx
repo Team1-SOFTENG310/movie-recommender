@@ -1,43 +1,43 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { fetchRecommendedMovies } from "../api/recommendedMovies";
+import { isAbortError } from "../api/tmdb";
+import type { Movie } from "../types/movie";
 import "./MovieRecommendations.css";
 
-const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
-const IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w300";
 const PLACEHOLDER_POSTER = "https://via.placeholder.com/300x450?text=No+Poster";
-
-interface RecommendedMovie {
-  id: number;
-  title: string;
-  poster_path: string | null;
-  release_date: string;
-}
 
 interface Props {
   movieId: number;
 }
 
 export default function MovieRecommendations({ movieId }: Readonly<Props>) {
-  const [recommendations, setRecommendations] = useState<RecommendedMovie[]>([]);
+  const [recommendations, setRecommendations] = useState<Movie[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const navigate = useNavigate();
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchRecommendations = async () => {
       setLoading(true);
       try {
-        const url = `https://api.themoviedb.org/3/movie/${movieId}/recommendations?api_key=${TMDB_API_KEY}`;
-        const response = await fetch(url);
-        const data = await response.json();
-        setRecommendations(data.results ?? []);
-      } catch {
+        setRecommendations(await fetchRecommendedMovies(movieId, controller.signal));
+      } catch (err) {
+        if (isAbortError(err)) {
+          return;
+        }
         setRecommendations([]);
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     };
 
-    fetchRecommendations();
+    void fetchRecommendations();
+
+    return () => controller.abort();
   }, [movieId]);
 
   if (loading) {
@@ -51,23 +51,21 @@ export default function MovieRecommendations({ movieId }: Readonly<Props>) {
   return (
     <div className="recommendations-section">
       <div className="recommendations-track">
-        {recommendations.map((movie) => {
-          let posterUrl = PLACEHOLDER_POSTER;
-          if (movie.poster_path) {
-            posterUrl = `${IMAGE_BASE_URL}${movie.poster_path}`;
-          }
-          return (
-            <button
-              key={movie.id}
-              type="button"
-              className="recommendation-card"
-              onClick={() => navigate(`/movie/${movie.id}`)}
-            >
-              <img src={posterUrl} alt={movie.title} className="recommendation-poster" />
-              <p className="recommendation-title">{movie.title}</p>
-            </button>
-          );
-        })}
+        {recommendations.map((movie) => (
+          <button
+            key={movie.id}
+            type="button"
+            className="recommendation-card"
+            onClick={() => void navigate(`/movie/${movie.id}`)}
+          >
+            <img
+              src={movie.posterUrl ?? PLACEHOLDER_POSTER}
+              alt={movie.title}
+              className="recommendation-poster"
+            />
+            <p className="recommendation-title">{movie.title}</p>
+          </button>
+        ))}
       </div>
     </div>
   );

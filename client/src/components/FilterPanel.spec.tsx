@@ -1,12 +1,19 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import FilterPanel from "./FilterPanel";
+import type { DiscoverFilters } from "../api/discoverMovies";
+
+type OnFiltersChange = (filters: DiscoverFilters) => void;
 
 describe("FilterPanel", () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+  });
+
   it("emits updated filters when a genre is selected", async () => {
     const user = userEvent.setup();
-    const onFiltersChange = vi.fn();
+    const onFiltersChange = vi.fn<OnFiltersChange>();
 
     render(<FilterPanel onFiltersChange={onFiltersChange} />);
 
@@ -23,7 +30,7 @@ describe("FilterPanel", () => {
 
   it("shows actor suggestions and selects one", async () => {
     const user = userEvent.setup();
-    const onFiltersChange = vi.fn();
+    const onFiltersChange = vi.fn<OnFiltersChange>();
 
     render(<FilterPanel onFiltersChange={onFiltersChange} />);
 
@@ -40,16 +47,52 @@ describe("FilterPanel", () => {
   });
 
   it("disables the actor input and clears castId when searchActive is true", () => {
-    const onFiltersChange = vi.fn();
-    render(<FilterPanel onFiltersChange={onFiltersChange} searchActive />);
+    sessionStorage.setItem("movieSearchActorName", "Test Actor");
+    const onFiltersChange = vi.fn<OnFiltersChange>();
+    render(
+      <FilterPanel
+        onFiltersChange={onFiltersChange}
+        initialFilters={{ castId: 999 }}
+        searchActive
+      />,
+    );
 
     expect(screen.getByLabelText(/actor/i)).toBeDisabled();
     expect(screen.getByText(/unavailable while searching/i)).toBeInTheDocument();
+    expect(onFiltersChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ castId: undefined }),
+    );
+  });
+
+  it("restores a previously selected actor from initialFilters", () => {
+    sessionStorage.setItem("movieSearchActorName", "Test Actor");
+    const onFiltersChange = vi.fn<OnFiltersChange>();
+
+    render(<FilterPanel onFiltersChange={onFiltersChange} initialFilters={{ castId: 999 }} />);
+
+    expect(screen.getByLabelText(/actor/i)).toHaveValue("Test Actor");
+    expect(screen.getByRole("button", { name: /test actor ✕/i })).toBeInTheDocument();
+    expect(onFiltersChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ castId: 999 }),
+    );
+  });
+
+  it("emits the chosen sort order", async () => {
+    const user = userEvent.setup();
+    const onFiltersChange = vi.fn<OnFiltersChange>();
+
+    render(<FilterPanel onFiltersChange={onFiltersChange} />);
+
+    await user.selectOptions(screen.getByLabelText(/sort by/i), "release_date");
+
+    expect(onFiltersChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sort: "release_date" }),
+    );
   });
 
   it("clears all filters when Clear all is clicked", async () => {
     const user = userEvent.setup();
-    const onFiltersChange = vi.fn();
+    const onFiltersChange = vi.fn<OnFiltersChange>();
 
     render(<FilterPanel onFiltersChange={onFiltersChange} />);
 
@@ -67,7 +110,7 @@ describe("FilterPanel", () => {
 
   it("initializes controls from initialFilters", () => {
     render(
-      <FilterPanel onFiltersChange={vi.fn()} initialFilters={{ genre: 27, ratingMin: 5, sort: "rating"}}/>,
+      <FilterPanel onFiltersChange={vi.fn<OnFiltersChange>()} initialFilters={{ genre: 27, ratingMin: 5, sort: "rating"}}/>,
     );
 
     expect(screen.getByLabelText(/genre/i)).toHaveValue("27");
