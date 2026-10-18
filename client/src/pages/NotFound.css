@@ -1,4 +1,4 @@
-.not-found {
+﻿.not-found {
   width: 100%;
   max-width: 36rem;
   margin: 0 auto;
@@ -10,7 +10,7 @@
   margin: 0;
   font-size: 0.8rem;
   letter-spacing: 0.2em;
-  color: #c8a96e;
+  color: var(--color-accent-text);
 }
 
 .not-found h1 {
@@ -20,25 +20,25 @@
 }
 
 .not-found p {
-  color: #a19dab;
+  color: var(--color-text-muted);
 }
 
 .not-found__home {
   display: inline-block;
   margin-top: 1.5rem;
   padding: 0.6rem 1.2rem;
-  color: #0c0c0f;
-  background-color: #c8a96e;
+  color: var(--color-on-accent);
+  background-color: var(--color-accent);
   border-radius: 0.5rem;
   text-decoration: none;
   font-weight: 500;
 }
 
 .not-found__home:hover {
-  background-color: #dbc08d;
+  background-color: var(--color-accent-hover);
 }
 
 .not-found__home:focus-visible {
-  outline: 2px solid #c8a96e;
+  outline: 2px solid var(--color-accent);
   outline-offset: 3px;
 }

@@ -246,6 +246,7 @@ These conventions keep both passing:
 - Treat values read from storage, `JSON.parse` or form inputs as `unknown` and check them before use (see `client/src/utils/searchStorage.ts`), instead of casting with `as`.
 - Indexing an array gives `T | undefined`, so handle the `undefined` case (or use `?.`) instead of adding `!`.
 - If you don't want to wait for a promise, such as `navigate()` in a click handler, mark it with `void`.
+- Use the colour tokens in `client/src/common.css` (e.g. `var(--color-text-muted)`) instead of hex values, so styles work in both the dark and light themes. Add a new token to both theme blocks; `src/theme/contrast.node.spec.ts` fails if a token is missing from either theme, or if text drops below WCAG AA contrast.
 
 ## Creating Tests
 `vitest` is used for all test cases, and roughly follows the below structure:

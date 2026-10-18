@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -21,6 +22,8 @@ import {
   type MovieGraphNode,
 } from "./movieGraphData";
 import AiRecommendationPanel from "./AiRecommendations/AiRecommendationPanel";
+import { ThemeContext } from "../context/ThemeContext";
+import { readGraphColors } from "../theme/graphColors";
 import "./MovieGraph.css";
 
 const GRAPH_HEIGHT = 600;
@@ -36,14 +39,6 @@ const MAX_ZOOM = 8;
 const SCROLL_HINT_MS = 1500;
 const IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.userAgent);
 
-// Keep in sync with the legend swatches in MovieGraph.css.
-const BACKGROUND_COLOR = "#16151a";
-const ROOT_COLOR = "#c8a96e";
-const DIRECT_COLOR = "#e8e4de";
-const INDIRECT_COLOR = "#5c5866";
-const LINK_COLOR = "#3d3a47";
-const LINK_FADED_COLOR = "rgba(61, 58, 71, 0.3)";
-const LABEL_COLOR = "#e8e4de";
 const FADED_ALPHA = 0.2;
 const LABEL_FONT = "Outfit, sans-serif";
 
@@ -81,6 +76,9 @@ export default function MovieGraph({ movieId, title, year }: Readonly<Props>) {
   );
   const [loadingId, setLoadingId] = useState<number | null>(movieId);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
+  // Canvas drawing can't use CSS variables directly, so read them for the current theme.
+  const resolvedTheme = useContext(ThemeContext)?.resolvedTheme ?? "dark";
+  const colors = useMemo(() => readGraphColors(resolvedTheme), [resolvedTheme]);
   const [error, setError] = useState<string | null>(null);
   const [showScrollHint, setShowScrollHint] = useState(false);
   const scrollHintTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -173,10 +171,10 @@ export default function MovieGraph({ movieId, title, year }: Readonly<Props>) {
 
   const nodeColor = useCallback((node: MovieGraphNode) => {
     if (node.depth === 0) {
-      return ROOT_COLOR;
+      return colors.root;
     }
-    return node.depth === 1 ? DIRECT_COLOR : INDIRECT_COLOR;
-  }, []);
+    return node.depth === 1 ? colors.direct : colors.indirect;
+  }, [colors]);
 
   const nodeRadius = useCallback((node: MovieGraphNode) => {
     if (node.depth === 0) {
@@ -201,7 +199,7 @@ export default function MovieGraph({ movieId, title, year }: Readonly<Props>) {
       ctx.fill();
 
       if (node.id === loadingId || node.id === hoveredId) {
-        ctx.strokeStyle = ROOT_COLOR;
+        ctx.strokeStyle = colors.root;
         ctx.lineWidth = 1.5 / globalScale;
         ctx.beginPath();
         ctx.arc(x, y, radius + 2.5 / globalScale, 0, 2 * Math.PI);
@@ -210,7 +208,7 @@ export default function MovieGraph({ movieId, title, year }: Readonly<Props>) {
 
       ctx.globalAlpha = 1;
     },
-    [highlightedIds, hoveredId, loadingId, nodeColor, nodeRadius],
+    [colors, highlightedIds, hoveredId, loadingId, nodeColor, nodeRadius],
   );
 
   // Titles are drawn after every node and line, so a neighbouring dot can't cover one.
@@ -243,13 +241,13 @@ export default function MovieGraph({ movieId, title, year }: Readonly<Props>) {
         ctx.font = `${weight} ${fontSize}px ${LABEL_FONT}`;
         // A background-coloured outline keeps labels readable where lines cross them.
         ctx.lineWidth = 3 / globalScale;
-        ctx.strokeStyle = BACKGROUND_COLOR;
+        ctx.strokeStyle = colors.background;
         ctx.strokeText(label, node.x, labelY);
-        ctx.fillStyle = LABEL_COLOR;
+        ctx.fillStyle = colors.label;
         ctx.fillText(label, node.x, labelY);
       }
     },
-    [graph, highlightedIds, hoveredId, nodeRadius],
+    [colors, graph, highlightedIds, hoveredId, nodeRadius],
   );
 
   // Keeps the clickable area in step with the circles drawn above.
@@ -273,11 +271,11 @@ export default function MovieGraph({ movieId, title, year }: Readonly<Props>) {
   const linkColor = useCallback(
     (link: MovieGraphLink) => {
       if (hoveredId === null) {
-        return LINK_COLOR;
+        return colors.link;
       }
-      return touchesHovered(link) ? ROOT_COLOR : LINK_FADED_COLOR;
+      return touchesHovered(link) ? colors.root : colors.linkFaded;
     },
-    [hoveredId, touchesHovered],
+    [colors, hoveredId, touchesHovered],
   );
 
   const linkWidth = useCallback(
@@ -380,7 +378,7 @@ export default function MovieGraph({ movieId, title, year }: Readonly<Props>) {
             graphData={graph}
             width={width}
             height={height}
-            backgroundColor={BACKGROUND_COLOR}
+            backgroundColor={colors.background}
             nodeLabel={nodeLabel}
             nodeRelSize={5}
             nodeCanvasObject={paintNode}

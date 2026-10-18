@@ -6,7 +6,7 @@
 }
 
 .profile-page > a {
-  color: #c8a96e;
+  color: var(--color-accent-text);
 }
 
 .profile-page h1 {
@@ -18,8 +18,8 @@
 .profile-card {
   margin-bottom: 1.5rem;
   padding: 1.5rem;
-  background-color: #16151a;
-  border: 1px solid #2a2830;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 1rem;
 }
 
@@ -36,7 +36,7 @@
 
 .profile-details dt {
   margin-bottom: 0.25rem;
-  color: #b8b2bf;
+  color: var(--color-text-secondary);
   font-size: 0.875rem;
 }
 
@@ -46,7 +46,7 @@
 }
 
 .profile-page > a:focus-visible {
-  outline: 2px solid #c8a96e;
+  outline: 2px solid var(--color-accent);
   outline-offset: 3px;
 }
 
@@ -55,21 +55,21 @@
   width: 100%;
   margin-top: 2rem;
   padding: 1rem;
-  border: 1px solid #c8a96e;
+  border: 1px solid var(--color-accent);
   border-radius: 0.75rem;
-  background-color: #c8a96e;
-  color: #0c0c0f;
+  background-color: var(--color-accent);
+  color: var(--color-on-accent);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
 }
 
 .profile-logout:hover:not(:disabled) {
-  background-color: #dbc08d;
+  background-color: var(--color-accent-hover);
 }
 
 .profile-logout:focus-visible {
-  outline: 2px solid #c8a96e;
+  outline: 2px solid var(--color-accent);
   outline-offset: 3px;
 }
 
@@ -79,5 +79,5 @@
 }
 
 .profile-error {
-  color: #ffb4ab;
+  color: var(--color-danger);
 }

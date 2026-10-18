@@ -8,6 +8,7 @@ import { useMovieResults } from "./hooks/useMovieResults.ts";
 import type { Movie } from "./types/movie.ts";
 import type { DiscoverFilters } from "./api/discoverMovies";
 import RandomButton from "./components/RandomButton.tsx";
+import ThemeSwitcher from "./components/ThemeSwitcher.tsx";
 import { CURRENT_YEAR, MIN_YEAR } from "./constants/filters";
 import {
   readStoredFilters,
@@ -112,7 +113,10 @@ function App() {
 
   return (
     <section id="search-page">
-      <div className="account-actions">{accountActions}</div>
+      <div className="account-actions">
+        <ThemeSwitcher />
+        {accountActions}
+      </div>
       {logoutError && (
         <p className="account-error" role="alert">
           {logoutError}

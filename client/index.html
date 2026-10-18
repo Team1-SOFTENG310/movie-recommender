@@ -5,6 +5,19 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>NetFlicks</title>
+    <script>
+      // Apply the saved theme before the app loads, so the page doesn't flash the
+      // wrong colours. Mirrors readStoredTheme/resolveTheme in src/theme/theme.ts.
+      (function () {
+        var theme = "dark";
+        try {
+          var saved = localStorage.getItem("theme");
+          var systemLight = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
+          if (saved === "light" || (saved === "system" && systemLight)) theme = "light";
+        } catch (e) {}
+        document.documentElement.dataset.theme = theme;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

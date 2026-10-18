@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import ViewingHistory from "../components/ViewingHistory";
+import ThemeSwitcher from "../components/ThemeSwitcher";
 import "./Profile.css";
 
 export default function Profile() {
@@ -67,6 +68,11 @@ export default function Profile() {
             <dd>{user.email}</dd>
           </div>
         </dl>
+      </section>
+
+      <section className="profile-card" aria-labelledby="appearance-heading">
+        <h2 id="appearance-heading">Appearance</h2>
+        <ThemeSwitcher />
       </section>
 
       <section

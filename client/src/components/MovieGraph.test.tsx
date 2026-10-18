@@ -7,6 +7,7 @@ import { server } from "../test/server";
 import MovieGraph from "./MovieGraph";
 import LocationDisplay from "../test/LocationDisplay";
 import type { MovieGraphData, MovieGraphNode } from "./movieGraphData";
+import { FALLBACK_GRAPH_COLORS } from "../theme/graphColors";
 
 // mocks graph due to jsdom limitations for canvas rendering
 vi.mock("react-force-graph-2d", () => ({
@@ -54,7 +55,7 @@ default: ({
         }
 
         // check node color (indicating level 0/1/2), true = level 0/1
-        const isExpanded = fillColor !== "#5c5866";
+        const isExpanded = fillColor !== FALLBACK_GRAPH_COLORS.dark.indirect;
 
         // returns button per node to mock as clickable on canvas
         return (
