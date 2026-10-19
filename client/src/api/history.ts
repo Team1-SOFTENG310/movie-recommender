@@ -6,14 +6,16 @@ export interface ViewedMovie {
   viewedAt: string;
 }
 
-interface HistoryResponse {
+/** One page of history; `totalPages` is 0 when the user hasn't viewed anything. */
+export interface HistoryPage {
   history: ViewedMovie[];
+  page: number;
+  totalPages: number;
 }
 
-/** The user's recently viewed movies, newest first. Needs a logged-in session. */
-export async function fetchHistory(signal?: AbortSignal): Promise<ViewedMovie[]> {
-  const response = await apiFetch<HistoryResponse>("/users/me/history", { signal });
-  return response.history;
+/** A page of the user's viewed movies, newest first. Needs a logged-in session. */
+export async function fetchHistory(page = 1, signal?: AbortSignal): Promise<HistoryPage> {
+  return apiFetch<HistoryPage>(`/users/me/history?page=${page}`, { signal });
 }
 
 /** Records that the logged-in user opened a movie. */

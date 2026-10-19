@@ -80,7 +80,8 @@ export default function Profile() {
         aria-labelledby="viewing-history-heading"
       >
         <h2 id="viewing-history-heading">Viewing history</h2>
-        <ViewingHistory />
+        {/* Keyed by account, so switching accounts drops the old list and its requests. */}
+        <ViewingHistory key={user.id} />
       </section>
       {logoutError && (
         <p className="profile-error" role="alert">

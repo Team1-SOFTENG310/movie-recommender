@@ -163,7 +163,7 @@ describe("Profile", () => {
     await waitForProfile();
 
     expect(screen.getByText(testUser.email)).toBeInTheDocument();
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.queryByText("Loading your profile…")).not.toBeInTheDocument();
   });
 
   it("shows an empty viewing history with a link back to the movies", async () => {
