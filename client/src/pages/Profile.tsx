@@ -213,7 +213,7 @@ export default function Profile() {
                       <strong>{entry.title}</strong>
                       {releaseYear && <span>{releaseYear}</span>}
                       <time dateTime={entry.lastViewedAt}>
-                        Viewed {new Date(entry.lastViewedAt).toLocaleDateString()}
+                        Viewed {new Date(entry.lastViewedAt).toLocaleString()}
                       </time>
                     </span>
                   </Link>

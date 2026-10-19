@@ -36,6 +36,10 @@ function renderProfile() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/login" element={<h1>Login page</h1>} />
           <Route path="/" element={<MovieHome />} />
+          <Route
+            path="/movie/:id"
+            element={<h1>Movie detail destination</h1>}
+          />
         </Routes>
       </MemoryRouter>
     </AuthProvider>,
@@ -219,6 +223,16 @@ describe("Profile", () => {
       "/movie/456",
     );
     expect(requestedPages).toEqual(["1", "2"]);
+
+    await user.click(
+      screen.getByRole("link", { name: /Second Movie/ }),
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Movie detail destination",
+      }),
+    ).toBeInTheDocument();
   });
 
   it("returns to movies without logging out when Back to movies is clicked", async () => {
