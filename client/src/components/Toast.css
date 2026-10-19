@@ -7,8 +7,8 @@
 }
 
 .toast-content {
-  background-color: #333;
-  color: #fff;
+  background-color: var(--color-surface-raised);
+  color: var(--color-text-strong);
   padding: 12px 20px;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -22,7 +22,7 @@
 .toast-close {
   background: none;
   border: none;
-  color: #aaa;
+  color: var(--color-text-muted);
   cursor: pointer;
   font-size: 16px;
   padding: 0;
@@ -30,7 +30,7 @@
 }
 
 .toast-close:hover {
-  color: #fff;
+  color: var(--color-text-strong);
 }
 
 @keyframes slideIn {

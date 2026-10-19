@@ -46,14 +46,16 @@ We agree to restrict the following behaviors in our community. Instances, threat
 
 Tensions can occur between community members even when they are trying their best to collaborate. Not every conflict represents a code of conduct violation, and this Code of Conduct reinforces encouraged behaviors and norms that can help avoid conflicts and minimize harm.
 
-When an incident does occur, it is important to report it promptly. To report a possible violation, **please reach out to a member of fn5, or if escalation is required, a member of the SOFTENG 310 teach team.**
+When an incident does occur, it is important to report it promptly. To report a possible violation, **please reach out privately to a maintainer of the project team you are working with: fn5 (owners of the [central repository](https://github.com/fn5-310/movie-recommender)) or Team1 (owners of the [A2 team fork](https://github.com/Team1-SOFTENG310/movie-recommender)). If the report involves a maintainer, or escalation is required, contact a member of the SOFTENG 310 teaching team.** Please don't report conduct issues in public issues or pull requests.
 
-For cases of the former, we will strive to resolve the report in a timely and amicable manner. For escalations to the teaching team, this will likely extend beyond the project itself, thus cannot be properly encapsulated within this Code of Conduct.
+For cases of the former, we will strive to resolve the report in a timely and amicable manner, and keep the reporter's identity private. For escalations to the teaching team, this will likely extend beyond the project itself, thus cannot be properly encapsulated within this Code of Conduct.
+
+In this document, **Community Moderators** means the members of the fn5 and Team1 project teams with admin access to their repository, excluding anyone involved in the report.
 
 
 ## Addressing and Repairing Harm
 
-For reports of the scope not requiring further escalation, an investigation by the Community Moderators finds that this Code of Conduct has been violated, the following enforcement ladder may be used to determine how best to repair harm, based on the incident's impact on the individuals involved and the community as a whole. Depending on the severity of a violation, lower rungs on the ladder may be skipped.
+For reports of the scope not requiring further escalation, if an investigation by the Community Moderators finds that this Code of Conduct has been violated, the following enforcement ladder may be used to determine how best to repair harm, based on the incident's impact on the individuals involved and the community as a whole. Depending on the severity of a violation, lower rungs on the ladder may be skipped.
 
 1) Warning
    1) Event: A violation involving a single incident or series of incidents.

@@ -20,6 +20,7 @@ export interface TmdbMovieResult {
   overview: string | null;
   genre_ids: number[] | null;
   vote_average: number | null;
+  original_language?: string | null;
 }
 
 export interface TmdbPersonResult {

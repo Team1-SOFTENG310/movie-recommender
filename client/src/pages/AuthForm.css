@@ -9,8 +9,8 @@
   width: 100%;
   max-width: 28rem;
   padding: 2rem;
-  background-color: #16151a;
-  border: 1px solid #2a2830;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 1rem;
 }
 
@@ -21,7 +21,7 @@
 }
 
 .login-card a {
-  color: #c8a96e;
+  color: var(--color-accent-text);
 }
 
 .login-card form {
@@ -41,17 +41,17 @@
   width: 100%;
   padding: 0.75rem;
   font: inherit;
-  color: #e8e4de;
-  background-color: #0c0c0f;
-  border: 1px solid #6b6872;
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border-strong);
   border-radius: 0.5rem;
 }
 
 .login-card button {
   padding: 0.75rem;
   font: inherit;
-  color: #0c0c0f;
-  background-color: #c8a96e;
+  color: var(--color-on-accent);
+  background-color: var(--color-accent);
   border: none;
   border-radius: 0.5rem;
   cursor: pointer;
@@ -65,11 +65,11 @@
 .login-card input:focus-visible,
 .login-card button:focus-visible,
 .login-card a:focus-visible {
-  outline: 2px solid #c8a96e;
+  outline: 2px solid var(--color-accent);
   outline-offset: 3px;
 }
 
 .login-card [role="alert"] {
   margin: 0;
-  color: #ffb4ab;
+  color: var(--color-danger);
 }

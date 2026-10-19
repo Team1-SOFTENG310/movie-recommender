@@ -12,11 +12,28 @@ interface UseMovieResultsResult {
   hasMore: boolean;
   error: string | null;
   loadMore: () => void;
+  retry: () => void;
+}
+
+// Client-side filters can empty a whole page of search results while later pages
+// still have matches, so a search keeps going this many pages before showing nothing.
+const MAX_SEARCH_PAGES_PER_LOAD = 5;
+
+// TMDB pages can overlap when rankings shift between requests, so a movie on
+// page 3 may already have appeared on page 2.
+function appendNew(existing: Movie[], incoming: Movie[]): Movie[] {
+  const seen = new Set(existing.map((movie) => movie.id));
+  return [...existing, ...incoming.filter((movie) => !seen.has(movie.id))];
 }
 
 function hasAnyFilter(filters: DiscoverFilters): boolean {
   return Boolean(
-    filters.genre || filters.yearFrom || filters.yearTo || filters.ratingMin || filters.castId,
+    filters.genre ||
+      filters.yearFrom ||
+      filters.yearTo ||
+      filters.language ||
+      filters.ratingMin ||
+      filters.castId,
   );
 }
 
@@ -30,6 +47,7 @@ function applyClientSideFilters(movies: Movie[], filters: DiscoverFilters): Movi
     if (filters.yearFrom && movie.year !== null && movie.year < filters.yearFrom) return false;
     if (filters.yearTo && movie.year !== null && movie.year > filters.yearTo) return false;
     if (filters.ratingMin && (movie.voteAverage ?? 0) < filters.ratingMin) return false;
+    if (filters.language && movie.originalLanguage !== filters.language) return false;
     // Note: castId is intentionally NOT checked here. Search results
     // don't include cast data, so actor filtering only works via
     // discoverMovies. FilterPanel disables the actor input whenever a
@@ -48,11 +66,16 @@ function applyClientSideFilters(movies: Movie[], filters: DiscoverFilters): Movi
  */
 export function useMovieResults(query: string, filters: DiscoverFilters): UseMovieResultsResult {
   const [movies, setMovies] = useState<Movie[]>([]);
+  // The page a load starts from, and the last page actually fetched (a filtered
+  // search can read ahead several pages in one load).
   const [page, setPage] = useState(1);
+  const [loadedThrough, setLoadedThrough] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Bumped by retry() to re-run the request for the current page.
+  const [attempt, setAttempt] = useState(0);
 
   // Tracks the most recent request so a slow, stale response (e.g. from
   // a query the user has since changed away from) can't overwrite
@@ -61,10 +84,14 @@ export function useMovieResults(query: string, filters: DiscoverFilters): UseMov
 
   // Reset to page 1 whenever the query or filters change, so switching
   // filters mid-scroll doesn't append page-3 results onto a brand new
-  // filter set.
-  useEffect(() => {
+  // filter set. Done during render rather than in an effect, so the fetch
+  // below never starts for the old page number first.
+  const [searchedFor, setSearchedFor] = useState({ query, filters });
+  if (searchedFor.query !== query || searchedFor.filters !== filters) {
+    setSearchedFor({ query, filters });
     setPage(1);
-  }, [query, filters]);
+    setLoadedThrough(0);
+  }
 
   useEffect(() => {
     const requestId = ++requestIdRef.current;
@@ -81,10 +108,20 @@ export function useMovieResults(query: string, filters: DiscoverFilters): UseMov
       try {
         let newMovies: Movie[];
         let newTotalPages: number;
+        let lastFetched = page;
 
         if (query) {
-          const response = await searchMovies(query, page, controller.signal);
+          let response = await searchMovies(query, page, controller.signal);
           newMovies = applyClientSideFilters(response.results, filters);
+          while (
+            newMovies.length === 0 &&
+            lastFetched < response.totalPages &&
+            lastFetched - page + 1 < MAX_SEARCH_PAGES_PER_LOAD
+          ) {
+            lastFetched += 1;
+            response = await searchMovies(query, lastFetched, controller.signal);
+            newMovies = applyClientSideFilters(response.results, filters);
+          }
           newTotalPages = response.totalPages;
         } else if (hasAnyFilter(filters)) {
           const response = await discoverMovies({ ...filters, page }, controller.signal);
@@ -99,13 +136,16 @@ export function useMovieResults(query: string, filters: DiscoverFilters): UseMov
         // this result rather than let it clobber more current data.
         if (requestId !== requestIdRef.current) return;
 
-        setMovies((prev) => (isFirstPage ? newMovies : [...prev, ...newMovies]));
+        setMovies((prev) => (isFirstPage ? newMovies : appendNew(prev, newMovies)));
         setTotalPages(newTotalPages);
+        setLoadedThrough(lastFetched);
         setHasSearched(true);
       } catch (err) {
         if (isAbortError(err)) return;
         if (requestId !== requestIdRef.current) return;
         setError(err instanceof Error ? err.message : "Failed to load movies");
+        // Results for a previous search shouldn't stay up as if they matched this one.
+        if (isFirstPage) setMovies([]);
       } finally {
         if (requestId === requestIdRef.current) setIsLoading(false);
       }
@@ -115,14 +155,15 @@ export function useMovieResults(query: string, filters: DiscoverFilters): UseMov
       clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [query, filters, page]);
+  }, [query, filters, page, attempt]);
 
   return {
     movies,
     isLoading,
     hasSearched,
-    hasMore: page < totalPages,
+    hasMore: Math.max(page, loadedThrough) < totalPages,
     error,
-    loadMore: () => setPage((p) => p + 1),
+    loadMore: () => setPage(Math.max(page, loadedThrough) + 1),
+    retry: () => setAttempt((n) => n + 1),
   };
 }

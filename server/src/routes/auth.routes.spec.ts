@@ -160,7 +160,15 @@ describe("authentication routes", () => {
     const currentUser = await agent.get("/api/auth/me");
 
     expect(logout.status).toBe(200);
-    expect(currentUser.status).toBe(401);
+    expect(currentUser.status).toBe(200);
+    expect(currentUser.body).toEqual({ user: null });
+  });
+
+  it("answers a logged-out visitor's session check without an error status", async () => {
+    const response = await request(app).get("/api/auth/me");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ user: null });
   });
 
   it("returns unavailable while MongoDB is disconnected", async () => {

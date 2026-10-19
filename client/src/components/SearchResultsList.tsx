@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
+import { PLACEHOLDER_POSTER } from "../constants/images";
 import type { Movie } from "../types/movie";
 import "./SearchResultsList.css";
 
@@ -7,29 +8,32 @@ interface SearchResultsListProps {
   isLoading: boolean;
   hasSearched: boolean;
   hasMore: boolean;
+  error?: string | null;
   onLoadMore: () => void;
+  onRetry?: () => void;
   onMovieClick: (movie: Movie) => void;
 }
-
-const FALLBACK_POSTER = "/placeholder-poster.png";
 
 export default function SearchResultsList({
   movies,
   isLoading,
   hasSearched,
   hasMore,
+  error = null,
   onLoadMore,
+  onRetry,
   onMovieClick,
 }: Readonly<SearchResultsListProps>) {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const handleIntersect = useCallback(
     (entries: IntersectionObserverEntry[]) => {
-      if (entries[0]?.isIntersecting && hasMore && !isLoading) {
+      // After a failed page, wait for the user to retry rather than re-requesting in a loop.
+      if (entries[0]?.isIntersecting && hasMore && !isLoading && !error) {
         onLoadMore();
       }
     },
-    [hasMore, isLoading, onLoadMore],
+    [error, hasMore, isLoading, onLoadMore],
   );
 
   useEffect(() => {
@@ -44,6 +48,19 @@ export default function SearchResultsList({
     return () => observer.disconnect();
   }, [handleIntersect]);
 
+  if (error && movies.length === 0 && !isLoading) {
+    return (
+      <div className="search-results search-results--empty search-results--error" role="alert">
+        <p>Couldn't load movies. Check your connection and try again.</p>
+        {onRetry && (
+          <button type="button" className="search-results__retry" onClick={onRetry}>
+            Try again
+          </button>
+        )}
+      </div>
+    );
+  }
+
   if (hasSearched && !isLoading && movies.length === 0) {
     return (
       <div
@@ -51,7 +68,7 @@ export default function SearchResultsList({
         role="status"
         aria-live="polite"
       >
-        <p>No movies found. Try a different title.</p>
+        <p>No movies found. Try a different title or loosen your filters.</p>
       </div>
     );
   }
@@ -76,7 +93,7 @@ export default function SearchResultsList({
               aria-label={`View details for ${movie.title}`}
             >
               <img
-                src={movie.posterUrl ?? FALLBACK_POSTER}
+                src={movie.posterUrl ?? PLACEHOLDER_POSTER}
                 alt=""
                 className="search-results__poster"
                 loading="lazy"
@@ -99,6 +116,17 @@ export default function SearchResultsList({
           aria-live="polite"
         >
           Loading more results...
+        </div>
+      )}
+
+      {error && !isLoading && (
+        <div className="search-results__error" role="alert">
+          <p>Couldn't load more movies.</p>
+          {onRetry && (
+            <button type="button" className="search-results__retry" onClick={onRetry}>
+              Try again
+            </button>
+          )}
         </div>
       )}
 

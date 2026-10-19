@@ -16,5 +16,11 @@ assignees: ''
 ## Describe the Fix/Solution
 <!-- What is the behaviour/outcome to consider this issue completed? -->
 
+## How will the implementation be tested?
+<!-- Which tests will show this works? Include error and edge cases. -->
+
+## Dependencies (Optional)
+<!-- e.g. "Depends on #30" if this needs another issue done first, or "Blocks #31" -->
+
 ## Additional Information (Optional)
 <!-- Add any other information that may help, e.g. context, screenshots, etc. -->

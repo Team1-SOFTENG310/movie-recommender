@@ -119,4 +119,53 @@ describe("FilterPanel", () => {
   });
 
   
+
+  it("shows the language as a filter and clears it with Clear all", async () => {
+    const user = userEvent.setup();
+    const onFiltersChange = vi.fn<OnFiltersChange>();
+    render(<FilterPanel onFiltersChange={onFiltersChange} />);
+
+    await user.selectOptions(screen.getByLabelText(/language/i), "fr");
+    await user.click(screen.getByRole("button", { name: /french/i }));
+
+    await waitFor(() => {
+      expect(onFiltersChange).toHaveBeenLastCalledWith(expect.objectContaining({ language: undefined }));
+    });
+
+    await user.selectOptions(screen.getByLabelText(/language/i), "fr");
+    await user.click(screen.getByRole("button", { name: /clear all/i }));
+
+    expect(screen.getByLabelText(/language/i)).toHaveValue("");
+    await waitFor(() => {
+      expect(onFiltersChange).toHaveBeenLastCalledWith(expect.objectContaining({ language: undefined }));
+    });
+  });
+
+  it("puts an inverted year range back in order when the field is left", async () => {
+    const user = userEvent.setup();
+    const onFiltersChange = vi.fn<OnFiltersChange>();
+    render(<FilterPanel onFiltersChange={onFiltersChange} />);
+
+    const from = screen.getByLabelText(/year range/i);
+    const to = document.getElementById("year-to") as HTMLInputElement;
+    await user.clear(to);
+    await user.type(to, "1990");
+    await user.clear(from);
+    await user.type(from, "2010");
+    await user.tab();
+
+    expect(from).toHaveValue(1990);
+    expect(to).toHaveValue(2010);
+  });
+
+  it("resets a year box that was left empty", async () => {
+    const user = userEvent.setup();
+    render(<FilterPanel onFiltersChange={vi.fn<OnFiltersChange>()} />);
+
+    const from = screen.getByLabelText(/year range/i);
+    await user.clear(from);
+    await user.tab();
+
+    expect(from).toHaveValue(1900);
+  });
 });

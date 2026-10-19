@@ -59,11 +59,11 @@ export function useAiRecommendations(movieId: number, title: string, year: numbe
       })
       .catch((err: unknown) => {
         if (isAbortError(err) || controller.signal.aborted) return;
-        setState((s) =>
-          s.movieId === movieId
-            ? { ...s, status: "error", error: "Couldn't generate recommendations. Please try again." }
-            : s,
-        );
+        const rateLimited = err instanceof Error && err.message.includes("status 429");
+        const error = rateLimited
+          ? "You've asked for a lot of AI picks. Please try again in a few minutes."
+          : "Couldn't generate recommendations. Please try again.";
+        setState((s) => (s.movieId === movieId ? { ...s, status: "error", error } : s));
       });
   }, [movieId, title, year]);
 

@@ -1,4 +1,5 @@
 import { isSortOption, type DiscoverFilters } from "../api/discoverMovies";
+import { MOVIE_LANGUAGES } from "../constants/languages";
 
 // The search page keeps its query and filters in sessionStorage so they
 // survive navigating to a movie's detail page and back. Stored values are
@@ -6,6 +7,8 @@ import { isSortOption, type DiscoverFilters } from "../api/discoverMovies";
 
 export const SEARCH_QUERY_STORAGE_KEY = "movieSearchQuery";
 export const SEARCH_FILTERS_STORAGE_KEY = "movieSearchFilters";
+// The filters only hold the actor's TMDB id, so the name for the input and chip is kept separately.
+export const SEARCH_ACTOR_NAME_STORAGE_KEY = "movieSearchActorName";
 
 // Queries containing angle brackets are never stored or restored.
 const SAFE_QUERY_PATTERN = /^[^<>]*$/;
@@ -61,9 +64,27 @@ export function readStoredFilters(storage: Storage = sessionStorage): DiscoverFi
     filters.sort = stored.sort;
   }
 
+  const language = stored.language;
+  if (typeof language === "string" && MOVIE_LANGUAGES.some((lang) => lang.code === language)) {
+    filters.language = language;
+  }
+
   return filters;
 }
 
 export function writeStoredFilters(filters: DiscoverFilters, storage: Storage = sessionStorage): void {
   storage.setItem(SEARCH_FILTERS_STORAGE_KEY, JSON.stringify(filters));
+}
+
+/** Reads the display name of the saved actor filter, or "" if there is none. */
+export function readStoredActorName(storage: Storage = sessionStorage): string {
+  return storage.getItem(SEARCH_ACTOR_NAME_STORAGE_KEY) ?? "";
+}
+
+export function writeStoredActorName(name: string, storage: Storage = sessionStorage): void {
+  storage.setItem(SEARCH_ACTOR_NAME_STORAGE_KEY, name);
+}
+
+export function clearStoredActorName(storage: Storage = sessionStorage): void {
+  storage.removeItem(SEARCH_ACTOR_NAME_STORAGE_KEY);
 }
