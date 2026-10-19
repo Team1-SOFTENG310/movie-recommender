@@ -10,7 +10,9 @@ const mocks = vi.hoisted(() => ({
   passwordHash: vi.fn(),
   historyFind: vi.fn(),
   historySort: vi.fn(),
+  historySkip: vi.fn(),
   historyLimit: vi.fn(),
+  historyCount: vi.fn(),
   historyLean: vi.fn(),
   historyUpsert: vi.fn(),
   historyDeleteMany: vi.fn(),
@@ -23,6 +25,7 @@ vi.mock("../models/User.js", () => ({
 vi.mock("../models/ViewingHistory.js", () => ({
   ViewingHistory: {
     find: mocks.historyFind,
+    countDocuments: mocks.historyCount,
     findOneAndUpdate: mocks.historyUpsert,
     deleteMany: mocks.historyDeleteMany,
   },
@@ -51,10 +54,12 @@ describe("users routes", () => {
   beforeEach(() => {
     databaseReady = true;
     vi.clearAllMocks();
-    // find().sort().limit().lean() chain
+    // find().sort().skip().limit().lean() chain
     mocks.historyFind.mockReturnValue({ sort: mocks.historySort });
-    mocks.historySort.mockReturnValue({ limit: mocks.historyLimit });
+    mocks.historySort.mockReturnValue({ skip: mocks.historySkip });
+    mocks.historySkip.mockReturnValue({ limit: mocks.historyLimit });
     mocks.historyLimit.mockReturnValue({ lean: mocks.historyLean });
+    mocks.historyCount.mockResolvedValue(0);
   });
 
   describe("GET /api/users/me", () => {
@@ -82,6 +87,7 @@ describe("users routes", () => {
         { movieId: 27205, lastViewedAt: new Date("2026-10-19T10:00:00Z") },
         { movieId: 603, lastViewedAt: new Date("2026-10-18T09:00:00Z") },
       ]);
+      mocks.historyCount.mockResolvedValue(2);
 
       const res = await agent.get("/api/users/me/history");
 
@@ -91,10 +97,44 @@ describe("users routes", () => {
           { movieId: 27205, viewedAt: "2026-10-19T10:00:00.000Z" },
           { movieId: 603, viewedAt: "2026-10-18T09:00:00.000Z" },
         ],
+        page: 1,
+        totalPages: 1,
       });
       expect(mocks.historyFind).toHaveBeenCalledWith({ userId: "user-123" });
       expect(mocks.historySort).toHaveBeenCalledWith({ lastViewedAt: -1 });
+      expect(mocks.historySkip).toHaveBeenCalledWith(0);
       expect(mocks.historyLimit).toHaveBeenCalledWith(HISTORY_LIMIT);
+    });
+
+    it("returns a later page and the page count", async () => {
+      const agent = await loggedInAgent();
+      mocks.historyLean.mockResolvedValue([{ movieId: 11, lastViewedAt: new Date("2026-10-01T00:00:00Z") }]);
+      mocks.historyCount.mockResolvedValue(HISTORY_LIMIT * 2 + 1);
+
+      const res = await agent.get("/api/users/me/history?page=3");
+
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({ page: 3, totalPages: 3 });
+      expect(mocks.historySkip).toHaveBeenCalledWith(HISTORY_LIMIT * 2);
+      expect(mocks.historyCount).toHaveBeenCalledWith({ userId: "user-123" });
+    });
+
+    it("reports no pages for an empty history", async () => {
+      const agent = await loggedInAgent();
+      mocks.historyLean.mockResolvedValue([]);
+
+      const res = await agent.get("/api/users/me/history");
+
+      expect(res.body).toEqual({ history: [], page: 1, totalPages: 0 });
+    });
+
+    it.each(["0", "-1", "1.5", "two", ""])("rejects page=%s", async (page) => {
+      const agent = await loggedInAgent();
+
+      const res = await agent.get(`/api/users/me/history?page=${page}`);
+
+      expect(res.status).toBe(400);
+      expect(mocks.historyFind).not.toHaveBeenCalled();
     });
 
     it("requires a logged-in user", async () => {
