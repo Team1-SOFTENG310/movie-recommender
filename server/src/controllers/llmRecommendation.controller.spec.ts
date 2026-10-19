@@ -2,8 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Request, Response } from 'express';
 import { createLlmRecommendationController, type MovieQuery } from './llmRecommendation.controller.js';
 
-// No TMDB key, so recommendations are returned without poster lookups
-const { getLlmRecommendations } = createLlmRecommendationController({ llmApiKey: 'test-llm-key' });
+// No TMDB key, so recommendations are returned without poster lookups. Caching is off
+// because these tests ask about the same movie with a different mocked answer each time.
+const { getLlmRecommendations } = createLlmRecommendationController(
+  { llmApiKey: 'test-llm-key' },
+  { cacheTtlMs: 0 },
+);
 
 // mock setup for the OpenAI SDK module
 const mockCreate = vi.fn();

@@ -1,139 +1,97 @@
+// src/controllers/history.controller.ts
 import type { RequestHandler } from "express";
-import { Types } from "mongoose";
-import { ViewingHistory } from "../models/ViewingHistory.js";
 import { HttpError, type ErrorResponse } from "../errors.js";
 import { asyncHandler } from "../middleware/error.middleware.js";
+import { ViewingHistory } from "../models/ViewingHistory.js";
 
-interface RecordViewBody {
-  movieId?: unknown;
-  title?: unknown;
-  posterPath?: unknown;
-  releaseDate?: unknown;
-}
+// Movies per page of history; the profile loads further pages on request.
+export const HISTORY_LIMIT = 20;
 
-interface HistoryEntryResponse {
+export interface ViewedMovie {
   movieId: number;
-  title: string;
-  posterPath: string | null;
-  releaseDate: string | null;
-  lastViewedAt: Date;
+  viewedAt: string;
 }
 
-interface HistoryPageResponse {
-  items: HistoryEntryResponse[];
+export interface HistoryResponse {
+  history: ViewedMovie[];
   page: number;
-  limit: number;
-  total: number;
   totalPages: number;
 }
 
-function parsePageValue(value: unknown, fallback: number, max: number): number {
-  if (value === undefined) return fallback;
-  if (typeof value !== "string" || !/^[1-9]\d*$/.test(value)) {
-    throw new HttpError(400, "page and limit must be positive integers");
-  }
+interface HistoryQuery {
+  page?: unknown;
+}
 
-  const parsed = Number(value);
-  if (!Number.isSafeInteger(parsed) || parsed > max) {
-    throw new HttpError(400, `Value must not exceed ${max}`);
+interface RecordViewBody {
+  movieId?: unknown;
+}
+
+// requireLogin runs first, so a missing userId here is a programming error.
+// Missing means the first page; anything else must be a whole number from 1.
+function parsePage(page: unknown): number {
+  if (page === undefined) return 1;
+  const parsed = typeof page === "string" && /^\d+$/.test(page) ? Number(page) : Number.NaN;
+  if (!Number.isSafeInteger(parsed) || parsed < 1) {
+    throw new HttpError(400, "page must be a positive integer");
   }
   return parsed;
 }
 
-function isDuplicateKeyError(error: unknown): boolean {
-  return typeof error === "object" && error !== null && "code" in error && error.code === 11000;
+function sessionUserId(userId: string | undefined): string {
+  if (!userId) throw new HttpError(401, "Not authenticated");
+  return userId;
 }
 
 export function createHistoryController() {
-  const recordViewedMovie: RequestHandler<{}, ErrorResponse, RecordViewBody> = asyncHandler(
-    async (req, res) => {
-      const { movieId, title, posterPath, releaseDate } = req.body ?? {};
-
-      if (!Number.isSafeInteger(movieId) || Number(movieId) < 1) {
-        throw new HttpError(400, "movieId must be a positive integer");
-      }
-      if (typeof title !== "string" || !title.trim() || title.trim().length > 200) {
-        throw new HttpError(400, "title must contain between 1 and 200 characters");
-      }
-      if (
-        posterPath !== undefined &&
-        posterPath !== null &&
-        (typeof posterPath !== "string" || !/^\/[A-Za-z0-9_./-]{1,299}$/.test(posterPath))
-      ) {
-        throw new HttpError(400, "posterPath must be a valid TMDB poster path or null");
-      }
-      if (
-        releaseDate !== undefined &&
-        releaseDate !== null &&
-        (typeof releaseDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(releaseDate))
-      ) {
-        throw new HttpError(400, "releaseDate must use YYYY-MM-DD format or be null");
-      }
-
-      const userId = req.session.userId;
-      if (!userId || !Types.ObjectId.isValid(userId)) {
-        throw new HttpError(401, "Not authenticated");
-      }
-
-      const filter = { userId, movieId };
-      const update = {
-        $set: {
-          title: title.trim(),
-          posterPath: posterPath ?? null,
-          releaseDate: releaseDate ?? null,
-          lastViewedAt: new Date(),
-        },
-      };
-
-      try {
-        await ViewingHistory.updateOne(filter, update, {
-          upsert: true,
-          runValidators: true,
-          setDefaultsOnInsert: true,
-        });
-      } catch (error) {
-        if (!isDuplicateKeyError(error)) throw error;
-        await ViewingHistory.updateOne(filter, update, { runValidators: true });
-      }
-
-      res.status(204).end();
-    },
-  );
-
-  const getViewingHistory: RequestHandler<{}, HistoryPageResponse | ErrorResponse> = asyncHandler(
-    async (req, res) => {
-      const userId = req.session.userId;
-      if (!userId || !Types.ObjectId.isValid(userId)) {
-        throw new HttpError(401, "Not authenticated");
-      }
-
-      const page = parsePageValue(req.query.page, 1, Number.MAX_SAFE_INTEGER);
-      const limit = parsePageValue(req.query.limit, 20, 50);
-      const filter = { userId };
-      const [records, total] = await Promise.all([
-        ViewingHistory.find(filter)
-          .sort({ lastViewedAt: -1, _id: -1 })
-          .skip((page - 1) * limit)
-          .limit(limit)
+  /** One page of the user's viewed movies, newest first. */
+  const listHistory: RequestHandler<{}, HistoryResponse | ErrorResponse, unknown, HistoryQuery> =
+    asyncHandler(async (req, res) => {
+      const userId = sessionUserId(req.session.userId);
+      const page = parsePage(req.query.page);
+      const [entries, total] = await Promise.all([
+        ViewingHistory.find({ userId })
+          .sort({ lastViewedAt: -1 })
+          .skip((page - 1) * HISTORY_LIMIT)
+          .limit(HISTORY_LIMIT)
           .lean(),
-        ViewingHistory.countDocuments(filter),
+        ViewingHistory.countDocuments({ userId }),
       ]);
 
       res.json({
-        items: records.map(({ movieId, title, posterPath, releaseDate, lastViewedAt }) => ({
-          movieId,
-          title,
-          posterPath,
-          releaseDate,
-          lastViewedAt,
+        history: entries.map((entry) => ({
+          movieId: entry.movieId,
+          viewedAt: entry.lastViewedAt.toISOString(),
         })),
         page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
+        totalPages: Math.ceil(total / HISTORY_LIMIT),
       });
-    },
-  );
+    });
 
-  return { recordViewedMovie, getViewingHistory };
+  /** Records that the user opened a movie; viewing it again moves it to the top. */
+  const recordView: RequestHandler<{}, ViewedMovie | ErrorResponse, RecordViewBody | undefined> =
+    asyncHandler(async (req, res) => {
+      const userId = sessionUserId(req.session.userId);
+      const movieId = req.body?.movieId;
+      if (typeof movieId !== "number" || !Number.isInteger(movieId) || movieId <= 0) {
+        throw new HttpError(400, "movieId must be a positive integer");
+      }
+
+      const entry = await ViewingHistory.findOneAndUpdate(
+        { userId, movieId },
+        { lastViewedAt: new Date() },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+      ).lean();
+
+      if (!entry) throw new HttpError(500, "Could not record the movie");
+      res.json({ movieId: entry.movieId, viewedAt: entry.lastViewedAt.toISOString() });
+    });
+
+  /** Deletes the user's whole viewing history. */
+  const clearHistory: RequestHandler = asyncHandler(async (req, res) => {
+    const userId = sessionUserId(req.session.userId);
+    await ViewingHistory.deleteMany({ userId });
+    res.status(204).end();
+  });
+
+  return { listHistory, recordView, clearHistory };
 }

@@ -139,7 +139,7 @@ describe("App search integration", () => {
       await screen.findByText("Final Destination Bloodlines"),
     ).toBeInTheDocument();
 
-    const backButton = screen.getByText(/← Back to Search/i);
+    const backButton = screen.getByRole("button", { name: "← Back" });
     await user.click(backButton);
 
     expect(screen.getByTestId("location-display").textContent).toBe("/");

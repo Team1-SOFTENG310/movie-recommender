@@ -25,5 +25,8 @@ assignees: ''
  - Browser: [e.g. chrome, safari]
  - Node.js Version: [e.g. v22.0.0]
 
+## Dependencies (Optional)
+<!-- e.g. "Depends on #30" if this needs another issue done first, or "Blocks #31" -->
+
 ## Additional Information (Optional)
 <!-- Add any other information that may help, e.g. context, screenshots, etc. -->

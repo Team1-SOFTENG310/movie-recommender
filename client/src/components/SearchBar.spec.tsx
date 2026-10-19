@@ -17,4 +17,12 @@ describe("SearchBar", () => {
       expect(onQueryChange).toHaveBeenCalledWith("inception");
     });
   });
+
+  it("stays usable while results are loading, so typing isn't interrupted", () => {
+    render(<SearchBar onQueryChange={vi.fn<(query: string) => void>()} isLoading />);
+
+    const input = screen.getByRole("textbox", { name: /search movies/i });
+    expect(input).toBeEnabled();
+    expect(input).toHaveAttribute("aria-busy", "true");
+  });
 });

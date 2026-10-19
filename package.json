@@ -10,13 +10,9 @@
     "test": "npm run test --prefix client && npm run test --prefix server"
   },
   "devDependencies": {
-    "@types/dompurify": "^3.0.5",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "concurrently": "^8.2.2",
     "typescript": "^7.0.2"
-  },
-  "dependencies": {
-    "dompurify": "^3.4.13"
   }
 }

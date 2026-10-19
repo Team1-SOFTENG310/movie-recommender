@@ -70,6 +70,7 @@ export function normalizeMovie(raw: TmdbMovieResult): Movie {
     overview: raw.overview ?? "",
     genreIds: raw.genre_ids ?? [],
     voteAverage: raw.vote_average ?? null,
+    originalLanguage: raw.original_language ?? null,
   };
 }
 

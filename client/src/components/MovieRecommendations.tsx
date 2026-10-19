@@ -2,10 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchRecommendedMovies } from "../api/recommendedMovies";
 import { isAbortError } from "../api/tmdb";
+import { PLACEHOLDER_POSTER } from "../constants/images";
 import type { Movie } from "../types/movie";
 import "./MovieRecommendations.css";
-
-const PLACEHOLDER_POSTER = "https://via.placeholder.com/300x450?text=No+Poster";
 
 interface Props {
   movieId: number;

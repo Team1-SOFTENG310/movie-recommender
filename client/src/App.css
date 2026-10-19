@@ -1,7 +1,7 @@
 #search-page {
   min-height: 100vh;
-  background-color: #0c0c0f;
-  color: #e8e4de;
+  background-color: var(--color-bg);
+  color: var(--color-text);
 }
 
 #search-page > h1 {
@@ -16,8 +16,8 @@
   gap: 0.5rem;
   margin: 0.875rem auto 0;
   padding: 0.55rem 1.1rem;
-  background-color: rgba(200, 169, 110, 0.08);
-  border: 1px solid rgba(200, 169, 110, 0.5);
+  background-color: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 50%, transparent);
   border-radius: 9999px;
   cursor: pointer;
   font-family: var(--font-body);
@@ -25,29 +25,29 @@
   font-weight: 500;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #e8e4de;
+  color: var(--color-text);
   transition: background-color 0.2s, border-color 0.2s, color 0.2s;
 }
 
 .filter-toggle:hover {
-  background-color: rgba(200, 169, 110, 0.16);
-  border-color: #c8a96e;
+  background-color: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  border-color: var(--color-accent);
 }
 
 .filter-toggle:focus-visible {
-  outline: 2px solid #c8a96e;
+  outline: 2px solid var(--color-accent);
   outline-offset: 3px;
 }
 
 .filter-toggle[aria-expanded="true"] {
-  background-color: #c8a96e;
-  border-color: #c8a96e;
-  color: #0c0c0f;
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-on-accent);
 }
 
 .filter-toggle__icon {
   flex-shrink: 0;
-  color: #c8a96e;
+  color: var(--color-accent-text);
 }
 
 .filter-toggle[aria-expanded="true"] .filter-toggle__icon {
@@ -67,13 +67,13 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background-color: #c8a96e;
-  box-shadow: 0 0 6px rgba(200, 169, 110, 0.8);
+  background-color: var(--color-accent);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--color-accent) 80%, transparent);
   flex-shrink: 0;
 }
 
 .filter-toggle[aria-expanded="true"] .filter-toggle__dot {
-  background-color: #0c0c0f;
+  background-color: var(--color-bg);
   box-shadow: none;
 }
 
@@ -112,8 +112,8 @@
 .account-link {
   display: inline-block;
   padding: 0.6rem 1.2rem;
-  color: #0c0c0f;
-  background-color: #c8a96e;
+  color: var(--color-on-accent);
+  background-color: var(--color-accent);
   border: none;
   border-radius: 0.5rem;
   font-family: inherit;
@@ -124,11 +124,11 @@
 }
 
 .account-link:hover {
-  background-color: #dbc08d;
+  background-color: var(--color-accent-hover);
 }
 
 .account-link:focus-visible {
-  outline: 2px solid #c8a96e;
+  outline: 2px solid var(--color-accent);
   outline-offset: 3px;
 }
 
@@ -138,7 +138,7 @@
 }
 
 .account-error {
-  color: #ffb4ab;
+  color: var(--color-danger);
   text-align: right;
   padding-right: 1rem;
 }
