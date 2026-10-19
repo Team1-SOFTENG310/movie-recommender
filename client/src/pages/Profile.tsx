@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { getViewingHistory, type ViewingHistoryItem } from "../api/viewingHistory";
@@ -10,6 +10,7 @@ const FALLBACK_POSTER = "https://via.placeholder.com/80x120?text=No+Poster";
 
 export default function Profile() {
   const { user, isLoading, logout } = useAuth();
+  const userId = user?.id;
   const navigate = useNavigate();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
@@ -20,53 +21,97 @@ export default function Profile() {
   const [historyLoadingMore, setHistoryLoadingMore] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [historyRetry, setHistoryRetry] = useState(0);
+  const historyMoreController = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    if (!user) return;
+    useEffect(() => {
+      if (!userId) {
+        return;
+      }
 
-    const controller = new AbortController();
-    setHistory([]);
-    setHistoryPage(0);
-    setHistoryTotalPages(0);
-    setHistoryLoading(true);
-    setHistoryError(null);
+      const controller = new AbortController();
 
-    getViewingHistory(1, HISTORY_PAGE_SIZE, controller.signal)
-      .then((result) => {
-        setHistory(result.items);
-        setHistoryPage(result.page);
-        setHistoryTotalPages(result.totalPages);
-      })
-      .catch((error: unknown) => {
-        if (!controller.signal.aborted) {
-          setHistoryError(
-            error instanceof Error ? error.message : "Unable to load viewing history",
-          );
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setHistoryLoading(false);
-      });
+      setHistory([]);
+      setHistoryPage(0);
+      setHistoryTotalPages(0);
+      setHistoryLoading(true);
+      setHistoryLoadingMore(false);
+      setHistoryError(null);
 
-    return () => controller.abort();
-  }, [user?.id, historyRetry]);
+      void getViewingHistory(1, HISTORY_PAGE_SIZE, controller.signal)
+        .then((result) => {
+          if (controller.signal.aborted) {
+            return;
+          }
+
+          setHistory(result.items);
+          setHistoryPage(result.page);
+          setHistoryTotalPages(result.totalPages);
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) {
+            setHistoryError(
+              "Unable to load viewing history. Please try again.",
+            );
+          }
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) {
+            setHistoryLoading(false);
+          }
+        });
+
+      return () => {
+        controller.abort();
+        historyMoreController.current?.abort();
+        historyMoreController.current = null;
+      };
+    }, [userId, historyRetry]);
 
   async function loadMoreHistory() {
-    if (historyLoading || historyLoadingMore || historyPage >= historyTotalPages) return;
+    if (
+      !user ||
+      historyLoading ||
+      historyLoadingMore ||
+      historyMoreController.current ||
+      historyPage >= historyTotalPages
+    ) {
+      return;
+    }
+
+    const controller = new AbortController();
+    historyMoreController.current = controller;
 
     setHistoryLoadingMore(true);
     setHistoryError(null);
+
     try {
-      const result = await getViewingHistory(historyPage + 1, HISTORY_PAGE_SIZE);
+      const result = await getViewingHistory(
+        historyPage + 1,
+        HISTORY_PAGE_SIZE,
+        controller.signal,
+      );
+
+      if (controller.signal.aborted) {
+        return;
+      }
+
       setHistory((previous) => [...previous, ...result.items]);
       setHistoryPage(result.page);
       setHistoryTotalPages(result.totalPages);
-    } catch (error: unknown) {
-      setHistoryError(
-        error instanceof Error ? error.message : "Unable to load more viewing history",
-      );
+    } catch {
+      if (!controller.signal.aborted) {
+        setHistoryError(
+          "Unable to load more viewing history. Please try again.",
+        );
+      }
     } finally {
-      setHistoryLoadingMore(false);
+      if (historyMoreController.current === controller) {
+        historyMoreController.current = null;
+      }
+
+      if (!controller.signal.aborted) {
+        setHistoryLoadingMore(false);
+      }
     }
   }
 
@@ -133,7 +178,7 @@ export default function Profile() {
       >
         <h2 id="viewing-history-heading">Viewing history</h2>
         {historyLoading && history.length === 0 && (
-          <p role="status">Loading viewing history…</p>
+          <output>Loading viewing history…</output>
         )}
         {historyError && (
           <div>
@@ -177,7 +222,7 @@ export default function Profile() {
             })}
           </ul>
         )}
-        {historyLoadingMore && <p role="status">Loading more history…</p>}
+        {historyLoadingMore && <output>Loading more history…</output>}
         {historyPage < historyTotalPages && !historyError && (
           <button
             type="button"

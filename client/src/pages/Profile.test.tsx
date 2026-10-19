@@ -122,6 +122,16 @@ describe("Profile", () => {
         await sessionPending;
         return HttpResponse.json({ user: testUser });
       }),
+
+      http.get(`${BASE_URL}/history/viewed`, () =>
+        HttpResponse.json({
+          items: [],
+          page: 1,
+          limit: 20,
+          total: 0,
+          totalPages: 0,
+        }),
+      ),
     );
 
     renderProfile();
@@ -143,7 +153,9 @@ describe("Profile", () => {
     await waitForProfile();
 
     expect(screen.getByText(testUser.email)).toBeInTheDocument();
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Loading your profile…"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows an empty state when the user has no viewing history", async () => {
@@ -153,8 +165,8 @@ describe("Profile", () => {
     await waitForProfile();
 
     expect(
-      screen.getByRole("region", { name: "Viewing history" }),
-    ).toHaveTextContent("You haven’t viewed any movies yet.");
+      await screen.findByText("You haven’t viewed any movies yet."),
+    ).toBeInTheDocument();
   });
 
   it("renders movie snapshots and loads the next history page", async () => {

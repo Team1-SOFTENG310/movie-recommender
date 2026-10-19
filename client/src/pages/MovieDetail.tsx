@@ -1,5 +1,5 @@
-import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
 import "./MovieDetail.css";
 
 import MovieRecommendations from "../components/MovieRecommendations";
@@ -48,7 +48,10 @@ function CastList({ cast }: Readonly<{ cast: TmdbCastMember[] }>) {
 export default function MovieDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
+  const userId = user?.id;
+  const { key: visitKey } = useLocation();
+  const lastRecordedVisit = useRef<string | null>(null);
 
   const [movie, setMovie] = useState<TmdbMovieDetails | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -87,17 +90,37 @@ export default function MovieDetail() {
   }, [id]);
 
   useEffect(() => {
-    if (!user || !movie || !id || String(movie.id) !== id) {
+    if (
+      isAuthLoading ||
+      !userId ||
+      loading ||
+      error ||
+      !movie ||
+      !id ||
+      String(movie.id) !== id
+    ) {
       return;
     }
+
+    const visit = JSON.stringify([visitKey, userId, movie.id]);
+
+    if (lastRecordedVisit.current === visit) {
+      return;
+    }
+
+    // Mark the attempt before sending to prevent duplicate effect requests.
+    lastRecordedVisit.current = visit;
 
     void recordViewedMovie({
       movieId: movie.id,
       title: movie.title,
       posterPath: movie.poster_path,
-      releaseDate: movie.release_date,
-    }).catch(() => undefined);
-  }, [id, movie, user?.id]);
+      releaseDate: movie.release_date || null,
+    }).catch(() => {
+      // Recording failures must not prevent the movie from being displayed.
+      console.warn("Unable to save this movie to viewing history.");
+    });
+  }, [id, movie, userId, isAuthLoading, loading, error, visitKey]);
 
   //loading section
   if (loading) {
