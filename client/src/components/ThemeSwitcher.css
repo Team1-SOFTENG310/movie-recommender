@@ -1,0 +1,26 @@
+.theme-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.theme-switcher select {
+  padding: 0.35rem 0.6rem;
+  font: inherit;
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.theme-switcher select:hover {
+  border-color: var(--color-accent);
+}
+
+.theme-switcher select:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}

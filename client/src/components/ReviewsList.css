@@ -6,7 +6,7 @@
 
 .review-card {
   padding: 1rem;
-  border: 1px solid var(--border, #e5e4e7);
+  border: 1px solid var(--color-border-strong);
   border-radius: 8px;
 }
 
@@ -23,14 +23,14 @@
 
 .review-rating {
   font-size: 13px;
-  color: var(--text, #6b6375);
+  color: var(--color-text-subtle);
   margin: 0 0 0.5rem 0;
 }
 
 .reviews-show-more {
   margin-top: 1rem;
   padding: 0.5rem 1rem;
-  border: 1px solid var(--border, #e5e4e7);
+  border: 1px solid var(--color-border-strong);
   border-radius: 6px;
   background: none;
   cursor: pointer;
@@ -38,5 +38,5 @@
 }
 
 .reviews-show-more:hover {
-  border-color: var(--accent-border, rgba(170, 59, 255, 0.5));
+  border-color: var(--color-accent);
 }

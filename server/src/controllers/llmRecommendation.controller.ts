@@ -17,7 +17,23 @@ interface OpenAIRecommendationPayload {
 
 export type LlmRecommendationConfig = Partial<Pick<AppConfig, 'llmApiKey' | 'tmdbApiKey'>>;
 
-export function createLlmRecommendationController({ llmApiKey, tmdbApiKey }: LlmRecommendationConfig) {
+export interface LlmRecommendationOptions {
+  /** How long a movie's recommendations are reused. 0 turns caching off. */
+  cacheTtlMs?: number;
+  now?: () => number;
+}
+
+// Every OpenAI call costs money and takes several seconds, and the same movie
+// tends to be asked about again, so successful answers are reused for a while.
+const DEFAULT_CACHE_TTL_MS = 60 * 60 * 1000;
+const MAX_CACHED_MOVIES = 500;
+
+export function createLlmRecommendationController(
+  { llmApiKey, tmdbApiKey }: LlmRecommendationConfig,
+  { cacheTtlMs = DEFAULT_CACHE_TTL_MS, now = Date.now }: LlmRecommendationOptions = {},
+) {
+  const cache = new Map<string, { expiresAt: number; body: unknown }>();
+
   /**
    * Express Route Handler for OpenAI LLM Recommendations
    */
@@ -41,6 +57,13 @@ export function createLlmRecommendationController({ llmApiKey, tmdbApiKey }: Llm
         res.status(400).json({
           error: 'Invalid "releaseYear" parameter. Must be a valid numeric year.',
         });
+        return;
+      }
+
+      const cacheKey = `${String(movie).trim().toLowerCase()}|${yearParsed}`;
+      const cached = cache.get(cacheKey);
+      if (cacheTtlMs > 0 && cached && cached.expiresAt > now()) {
+        res.status(200).json(cached.body);
         return;
       }
 
@@ -91,7 +114,7 @@ You are a movie recommendation system. Given a movie title and its release year,
       const enrichedMovies = await enrichMoviesWithImages(parsedData.recommendations, tmdbApiKey);
 
       // Return structured recommendation data
-      res.status(200).json({
+      const body = {
         success: true,
         selectedMovie: {
           title: movie,
@@ -101,7 +124,16 @@ You are a movie recommendation system. Given a movie title and its release year,
           userInterestSummary: parsedData.userInterestSummary,
           recommendations: enrichedMovies,
         },
-      });
+      };
+
+      if (cacheTtlMs > 0) {
+        // Maps keep insertion order, so the first key is the oldest entry.
+        const oldest = cache.keys().next().value;
+        if (cache.size >= MAX_CACHED_MOVIES && oldest !== undefined) cache.delete(oldest);
+        cache.set(cacheKey, { expiresAt: now() + cacheTtlMs, body });
+      }
+
+      res.status(200).json(body);
     } catch (error) {
       console.log(error);
       res.status(500).json({

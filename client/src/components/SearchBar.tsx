@@ -72,8 +72,8 @@ export default function SearchBar({
           onChange={(e) => setInputValue(e.target.value)}
           placeholder={placeholder}
           aria-label="Search movies"
+          aria-busy={isLoading}
           className="search-bar__input"
-          disabled={isLoading}
         />
         {isLoading && (
           <span className="search-bar__spinner" role="status" aria-live="polite" />

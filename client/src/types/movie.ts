@@ -9,6 +9,8 @@ export interface Movie {
   overview: string;
   genreIds: number[];
   voteAverage: number | null;
+  /** ISO 639-1 code, e.g. "en". Optional so existing Movie objects stay valid. */
+  originalLanguage?: string | null;
 }
 
 export interface SearchMoviesResponse {

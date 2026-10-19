@@ -36,6 +36,7 @@ describe("normalizeMovie", () => {
       overview: "A heist film.",
       genre_ids: [28, 80],
       vote_average: 7.9,
+      original_language: "en",
     };
 
     expect(normalizeMovie(raw)).toEqual({
@@ -46,6 +47,7 @@ describe("normalizeMovie", () => {
       overview: "A heist film.",
       genreIds: [28, 80],
       voteAverage: 7.9,
+      originalLanguage: "en",
     });
   });
 
@@ -68,6 +70,7 @@ describe("normalizeMovie", () => {
       overview: "",
       genreIds: [],
       voteAverage: null,
+      originalLanguage: null,
     });
   });
 });

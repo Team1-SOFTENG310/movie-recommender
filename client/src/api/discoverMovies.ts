@@ -24,6 +24,16 @@ const SORT_MAP: Record<SortOption, string> = {
   popularity: "popularity.desc",
 };
 
+// Without a vote floor, TMDB ranks films with a single 10/10 vote above everything
+// else, and "newest" is full of unreleased placeholder entries with no votes.
+const MIN_VOTES_FOR_RATING_SORT = 200;
+const MIN_VOTES_FOR_RATING_FILTER = 50;
+const MIN_VOTES_FOR_RELEASE_SORT = 10;
+
+function todayIsoDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 /** Narrows an untrusted value (e.g. a <select> value or stored JSON) to a SortOption. */
 export function isSortOption(value: unknown): value is SortOption {
   return typeof value === "string" && Object.hasOwn(SORT_MAP, value);
@@ -49,6 +59,23 @@ export async function discoverMovies(
   if (filters.ratingMin) {params["vote_average.gte"] = String(filters.ratingMin)};
   if (filters.castId) {params.with_cast = String(filters.castId)};
   if (filters.page) {params.page = String(filters.page)};
+
+  let minVotes = 0;
+  if (filters.sort === "rating") {
+    minVotes = MIN_VOTES_FOR_RATING_SORT;
+  } else if (filters.ratingMin) {
+    minVotes = MIN_VOTES_FOR_RATING_FILTER;
+  }
+  if (filters.sort === "release_date") {
+    minVotes = Math.max(minVotes, MIN_VOTES_FOR_RELEASE_SORT);
+    // Newest first should start from movies that are actually out.
+    const today = todayIsoDate();
+    const upperBound = params["primary_release_date.lte"];
+    if (!upperBound || upperBound > today) {
+      params["primary_release_date.lte"] = today;
+    }
+  }
+  if (minVotes > 0) {params["vote_count.gte"] = String(minVotes)};
 
   const data = await tmdbGet<TmdbPage<TmdbMovieResult>>("/discover/movie", {
     params,

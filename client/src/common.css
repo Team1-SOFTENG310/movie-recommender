@@ -7,18 +7,72 @@
   --font-body: 'Outfit', sans-serif;
 }
 
+/*
+ * Colour tokens. Components use these instead of hex values so every theme
+ * applies everywhere. <html data-theme> is "dark" (the default) or "light";
+ * the "System" choice is resolved to one of them in src/theme/theme.ts.
+ * Every text/background pair here meets WCAG AA (4.5:1), and focus rings and
+ * graph nodes meet 3:1 (checked by src/theme/contrast.spec.ts).
+ */
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg: #0c0c0f;
+  --color-surface: #16151a;
+  --color-surface-raised: #1e1c24;
+  --color-surface-hover: #2a2830;
+  --color-border-subtle: #1e1d24;
+  --color-border: #2a2830;
+  --color-border-strong: #3d3a47;
+  --color-text: #e8e4de;
+  --color-text-strong: #f5f2ed;
+  --color-text-secondary: #c9c5cf;
+  --color-text-muted: #a19dab;
+  --color-text-subtle: #96929f;
+  --color-accent: #c8a96e;
+  --color-accent-hover: #dbc08d;
+  --color-accent-text: #c8a96e;
+  --color-on-accent: #0c0c0f;
+  --color-danger: #ffb4ab;
+  --color-node-direct: #e8e4de;
+  --color-node-indirect: #6e6a78;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --color-bg: #f7f5f1;
+  --color-surface: #ffffff;
+  --color-surface-raised: #f1eee8;
+  --color-surface-hover: #e9e5dd;
+  --color-border-subtle: #ece8e1;
+  --color-border: #dfdad1;
+  --color-border-strong: #c4beb3;
+  --color-text: #1d1b22;
+  --color-text-strong: #0f0e13;
+  --color-text-secondary: #3b3842;
+  --color-text-muted: #55515d;
+  --color-text-subtle: #66626e;
+  --color-accent: #a8823c;
+  --color-accent-hover: #b9944f;
+  --color-accent-text: #7a5a1c;
+  --color-on-accent: #1d1b22;
+  --color-danger: #b3261e;
+  --color-node-direct: #3b3842;
+  --color-node-indirect: #8d8896;
+}
+
 * {
   box-sizing: border-box;
 }
 
 body {
   font-family: var(--font-body);
-  background-color: #0c0c0f;
-  color: #e8e4de;
+  background-color: var(--color-bg);
+  color: var(--color-text);
 }
 
 input::placeholder {
-  color: #6b6872;
+  color: var(--color-text-subtle);
 }
 
 input:focus {
@@ -36,4 +90,17 @@ input:focus {
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Hidden on screen but still read by screen readers. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

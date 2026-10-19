@@ -2,8 +2,11 @@ import { beforeEach, describe, it, expect } from "vitest";
 import {
   SEARCH_FILTERS_STORAGE_KEY,
   SEARCH_QUERY_STORAGE_KEY,
+  clearStoredActorName,
+  readStoredActorName,
   readStoredFilters,
   readStoredQuery,
+  writeStoredActorName,
   writeStoredFilters,
   writeStoredQuery,
 } from "./searchStorage";
@@ -40,7 +43,15 @@ describe("searchStorage", () => {
 
   describe("filters", () => {
     it("round-trips saved filters", () => {
-      const filters = { genre: 28, yearFrom: 1990, yearTo: 2000, ratingMin: 6.5, castId: 999, sort: "rating" as const };
+      const filters = {
+        genre: 28,
+        yearFrom: 1990,
+        yearTo: 2000,
+        language: "fr",
+        ratingMin: 6.5,
+        castId: 999,
+        sort: "rating" as const,
+      };
       writeStoredFilters(filters);
       expect(readStoredFilters()).toEqual(filters);
     });
@@ -51,6 +62,11 @@ describe("searchStorage", () => {
         JSON.stringify({ genre: "28", yearFrom: 1990, sort: "alphabetical", extra: true }),
       );
       expect(readStoredFilters()).toEqual({ yearFrom: 1990 });
+    });
+
+    it("drops a language the filter panel doesn't offer", () => {
+      sessionStorage.setItem(SEARCH_FILTERS_STORAGE_KEY, JSON.stringify({ language: "<script>" }));
+      expect(readStoredFilters()).toEqual({});
     });
 
     it.each([
@@ -64,6 +80,18 @@ describe("searchStorage", () => {
         sessionStorage.setItem(SEARCH_FILTERS_STORAGE_KEY, saved);
       }
       expect(readStoredFilters()).toEqual({});
+    });
+  });
+
+  describe("actor name", () => {
+    it("round-trips and clears the saved actor name", () => {
+      expect(readStoredActorName()).toBe("");
+
+      writeStoredActorName("Keanu Reeves");
+      expect(readStoredActorName()).toBe("Keanu Reeves");
+
+      clearStoredActorName();
+      expect(readStoredActorName()).toBe("");
     });
   });
 });

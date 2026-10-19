@@ -6,8 +6,7 @@ export interface AppConfig {
   isProduction: boolean;
   // Optional: without it the server runs in degraded mode (see startServer.ts)
   mongoUri?: string;
-  // Optional until Members 1/3 need them
-  jwtSecret?: string;
+  // Optional: without it, AI recommendations return an error
   llmApiKey?: string;
   // Required in production; a fixed development secret is used otherwise
   sessionSecret?: string;
@@ -24,7 +23,7 @@ function parsePort(value: string | undefined, fallback: number, name: string): n
 
 function nonEmpty(value: string | undefined): string | undefined {
   const trimmed = value?.trim();
-  return trimmed ? trimmed : undefined;
+  return trimmed || undefined;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -41,7 +40,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     tmdbApiKey,
     isProduction: env.NODE_ENV === "production",
     mongoUri: nonEmpty(env.MONGODB_URI),
-    jwtSecret: env.JWT_SECRET,
     // OPENAI_API_KEY is the name the OpenAI SDK and docs use
     llmApiKey: nonEmpty(env.LLM_API_KEY) ?? nonEmpty(env.OPENAI_API_KEY),
     sessionSecret: nonEmpty(env.SESSION_SECRET),

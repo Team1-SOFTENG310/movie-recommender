@@ -1,5 +1,4 @@
-import { render as renderRTL, screen, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
 import MovieDetail from "./MovieDetail";
 import { server } from "../test/server";
@@ -9,11 +8,7 @@ import userEvent from "@testing-library/user-event";
 import LocationDisplay from "../test/LocationDisplay";
 import { AuthProvider } from "../context/AuthProvider";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
-
-function render(ui: ReactNode) {
-  return renderRTL(<AuthProvider>{ui}</AuthProvider>);
-}
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 describe("MovieDetail", () => {
   afterEach(() => {
@@ -110,37 +105,6 @@ describe("MovieDetail", () => {
     expect(screen.getByText("Bobby")).toBeInTheDocument();
   });
 
-  it("records a successfully loaded movie for a logged-in user", async () => {
-    let recordedMovie: unknown;
-    server.use(
-      http.get(`${BASE_URL}/auth/me`, () =>
-        HttpResponse.json({ user: { id: "user-1", username: "film_fan", email: "film@example.com" } }),
-      ),
-      http.post(`${BASE_URL}/history/viewed`, async ({ request }) => {
-        recordedMovie = await request.json();
-        return new HttpResponse(null, { status: 204 });
-      }),
-    );
-
-    render(
-      <MemoryRouter initialEntries={["/movie/574475"]}>
-        <Routes>
-          <Route path="/movie/:id" element={<MovieDetail />} />
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    await screen.findByRole("heading", { name: "Final Destination Bloodlines" });
-    await waitFor(() => {
-      expect(recordedMovie).toEqual({
-        movieId: 574475,
-        title: "Final Destination Bloodlines",
-        posterPath: "/final-destination-bloodlines.jpg",
-        releaseDate: "2025-05-14",
-      });
-    });
-  });
-
   // Test 6: Movie not found error
   it("shows an error when API returns 404", async () => {
     server.use(
@@ -160,25 +124,120 @@ describe("MovieDetail", () => {
   });
 
   // Test 7: back button goes back
-  it('navigates back to the home page when "Back to Search" is clicked', async () => {
+  it("goes back to the previous page when Back is clicked", async () => {
     const user = userEvent.setup();
 
     render(
-      <MemoryRouter initialEntries={["/", "/movie/574475"]} initialIndex={1}>
+      <AuthProvider>
+        <MemoryRouter initialEntries={["/", "/movie/574475"]} initialIndex={1}>
           <LocationDisplay/>
           <Routes>
             <Route path="/" element={<App />} />
             <Route path="/movie/:id" element={<MovieDetail />} />
           </Routes>
         </MemoryRouter>,
+      </AuthProvider>
     );
 
     await screen.findByText("Final Destination Bloodlines");
-    const backButton = screen.getByText(/← Back to Search/i);
+    const backButton = screen.getByRole("button", { name: "← Back" });
     await user.click(backButton);
 
     // confirms page is exactly on root
     expect(screen.getByTestId("location-display").textContent).toBe("/");
+  });
+
+  it("goes to the homepage when Back is clicked on a movie opened from a link", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={["/movie/574475"]}>
+          <LocationDisplay/>
+          <Routes>
+            <Route path="/" element={<App />} />
+            <Route path="/movie/:id" element={<MovieDetail />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>
+    );
+
+    await screen.findByText("Final Destination Bloodlines");
+    await user.click(screen.getByRole("button", { name: "← Back" }));
+
+    expect(screen.getByTestId("location-display").textContent).toBe("/");
+  });
+
+  it("doesn't call a server error a missing movie", async () => {
+    server.use(
+      http.get("https://api.themoviedb.org/3/movie/:id", () => new HttpResponse(null, { status: 500 })),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/movie/574475"]}>
+        <Routes>
+          <Route path="/movie/:id" element={<MovieDetail />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText("Couldn't load this movie. Please try again.")).toBeInTheDocument();
+    expect(screen.queryByText("404")).not.toBeInTheDocument();
+  });
+
+  it("adds the movie to a logged-in user's viewing history", async () => {
+    const recorded: unknown[] = [];
+    server.use(
+      http.get(`${API_URL}/auth/me`, () =>
+        HttpResponse.json({ user: { id: "user-1", username: "film_fan", email: "film@example.com" } }),
+      ),
+      http.post(`${API_URL}/users/me/history`, async ({ request }) => {
+        recorded.push(await request.json());
+        return HttpResponse.json({ movieId: 574475, viewedAt: "2026-10-19T00:00:00.000Z" });
+      }),
+    );
+
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={["/movie/574475"]}>
+          <Routes>
+            <Route path="/movie/:id" element={<MovieDetail />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>
+    );
+
+    await screen.findByText("Final Destination Bloodlines");
+    await waitFor(() => expect(recorded).toEqual([{ movieId: 574475 }]));
+  });
+
+  it("doesn't record anything for a logged-out visitor", async () => {
+    let recordCalls = 0;
+    let sessionChecked = false;
+    server.use(
+      http.get(`${API_URL}/auth/me`, () => {
+        sessionChecked = true;
+        return HttpResponse.json({ message: "Not authenticated" }, { status: 401 });
+      }),
+      http.post(`${API_URL}/users/me/history`, () => {
+        recordCalls += 1;
+        return HttpResponse.json({});
+      }),
+    );
+
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={["/movie/574475"]}>
+          <Routes>
+            <Route path="/movie/:id" element={<MovieDetail />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>
+    );
+
+    await screen.findByText("Final Destination Bloodlines");
+    await waitFor(() => expect(sessionChecked).toBe(true));
+    expect(recordCalls).toBe(0);
   });
 
   // Test 8: a slow response for the previous movie doesn't replace the current one

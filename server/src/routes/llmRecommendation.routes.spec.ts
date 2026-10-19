@@ -21,7 +21,11 @@ vi.mock('openai', () => {
 
 const app = express();
 app.use(express.json());
-app.use('/api/llm-recommender', createLlmRecommendationRouter({ llmApiKey: 'test-llm-key' }));
+// Caching off: these tests ask about the same movie with a different mocked answer each time.
+app.use(
+  '/api/llm-recommender',
+  createLlmRecommendationRouter({ llmApiKey: 'test-llm-key' }, { cacheTtlMs: 0 }),
+);
 
 describe('GET /api/llm-recommender', () => {
   beforeEach(() => {

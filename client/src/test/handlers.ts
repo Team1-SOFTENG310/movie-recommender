@@ -185,4 +185,14 @@ export const handlers = [
       { status: 401 },
     );
   }),
+  // Viewing history: empty by default, and recording a view succeeds
+  http.get(`${import.meta.env.VITE_API_URL || "http://localhost:5000/api"}/users/me/history`, () =>
+    HttpResponse.json({ history: [] }),
+  ),
+  http.post(`${import.meta.env.VITE_API_URL || "http://localhost:5000/api"}/users/me/history`, () =>
+    HttpResponse.json({ movieId: 1, viewedAt: "2026-10-19T00:00:00.000Z" }),
+  ),
+  http.delete(`${import.meta.env.VITE_API_URL || "http://localhost:5000/api"}/users/me/history`, () =>
+    new HttpResponse(null, { status: 204 }),
+  ),
 ];
